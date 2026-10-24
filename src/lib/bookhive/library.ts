@@ -1,4 +1,6 @@
-import { listAllRecords, resolvePds, rkeyOf, type RawRecord } from '../atproto'
+import { listAllRecords, rkeyOf, type RawRecord } from '../atproto'
+import { StaleRecordError } from '../errors'
+import { resolvePds } from '../identity'
 import { procedure, XrpcError, type SessionFetch } from '../xrpc'
 import { isHiveId } from './hiveId'
 import { BOOK_COLLECTION, type BookEntry, type BookRecord } from './types'
@@ -43,12 +45,6 @@ export function applyPatch(value: BookRecord, patch: BookPatch): BookRecord {
     else if (v !== undefined) next[key] = v
   }
   return next as BookRecord
-}
-
-export class StaleRecordError extends Error {
-  constructor() {
-    super('This book changed somewhere else since you opened it. Reload it and try again.')
-  }
 }
 
 type WriteResult = { uri: string; cid: string }

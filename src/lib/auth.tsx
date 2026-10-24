@@ -1,118 +1,167 @@
-import { BrowserOAuthClient, type OAuthSession } from '@atproto/oauth-client-browser'
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { networkStore } from './network'
-import { loopbackClientId, OAUTH_SCOPE } from './oauthConfig'
+import {
+  clearStoredOAuthSessions,
+  describeOAuthError,
+  finishOAuthSignIn,
+  hasOAuthCallbackParams,
+  hasStoredOAuthSession,
+  readOAuthCallbackParams,
+  resumeOAuthSession,
+  signOutOAuthSession,
+  startOAuthSignIn as startOAuthSignInService,
+  type OAuthSession,
+  type SessionEndedCallback,
+} from './oauth'
 
-/**
- * Browser-only OAuth: tokens live in this browser's IndexedDB and every write
- * goes straight from here to the user's PDS. No server sees them.
- */
-
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', '[::1]', 'localhost'])
-
-function isLoopback(): boolean {
-  return LOOPBACK_HOSTS.has(window.location.hostname)
-}
-
-let clientPromise: Promise<BrowserOAuthClient> | null = null
-/** Called when the PDS revokes the session or a refresh fails for good. */
-const onSessionEnded = new Set<() => void>()
-
-function getClient(): Promise<BrowserOAuthClient> {
-  clientPromise ??= BrowserOAuthClient.load({
-    clientId: isLoopback()
-      ? loopbackClientId({ port: window.location.port, pathname: import.meta.env.BASE_URL })
-      : `${__SITE_URL__}client-metadata.json`,
-    handleResolver: 'https://public.api.bsky.app',
-    onSessionDeleted: () => onSessionEnded.forEach((fn) => fn()),
-  })
-  return clientPromise
-}
-
-let initPromise: ReturnType<BrowserOAuthClient['init']> | null = null
-
-/** Restores a session or completes a sign-in callback. Must run once per page load: callback state is single-use. */
-function initOnce(): ReturnType<BrowserOAuthClient['init']> {
-  initPromise ??= getClient().then((client) => client.init())
-  return initPromise
-}
-
-type AuthState =
-  | { status: 'loading' }
-  | { status: 'signedOut'; error?: string }
-  | { status: 'signedIn'; did: string; session: OAuthSession }
+export type AuthState =
+  | { status: 'restoring' }
+  | { status: 'signed-out'; notice?: string }
+  | { status: 'signed-in'; session: OAuthSession }
 
 type AuthContextValue = {
   state: AuthState
-  signIn: (handle: string) => Promise<void>
+  /** Redirects to the account's PDS; `returnTo` is the in-app path to land on afterwards. */
+  startOAuthSignIn: (identifier: string, returnTo?: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function describe(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err)
-  if (/resolve|handle|not found/i.test(message)) {
-    return "We couldn't find that account. Check the handle, e.g. alice.bsky.social."
+type Restored = { session: OAuthSession; returnTo: string | null } | null
+
+// Restore at most once per page load. Refresh tokens and callback codes are
+// single-use, so a second concurrent restore (e.g. React StrictMode) would
+// revoke the first.
+let restoreOnce: Promise<Restored> | null = null
+
+/** Lets tests isolate themselves without changing the per-page latch. */
+export function resetRestoreLatchForTests(): void {
+  restoreOnce = null
+}
+
+/** The authorization response is single-use: never leave it in the URL or history. */
+function clearOAuthParams() {
+  const url = new URL(globalThis.location.href)
+  url.search = ''
+  url.hash = ''
+  globalThis.history.replaceState({}, '', url)
+}
+
+async function restoreSession(onEnded: SessionEndedCallback): Promise<Restored> {
+  if (hasOAuthCallbackParams()) {
+    const params = readOAuthCallbackParams()
+    clearOAuthParams()
+    try {
+      return await finishOAuthSignIn(params, onEnded)
+    } catch (err) {
+      // A stale or replayed callback shouldn't sign out someone who's already signed in.
+      const existing = await resumeOAuthSession(onEnded).catch(() => null)
+      if (existing) return { session: existing, returnTo: null }
+      throw err
+    }
   }
-  return message
+  const session = await resumeOAuthSession(onEnded)
+  return session ? { session, returnTo: null } : null
+}
+
+function initialState(): AuthState {
+  let stored: boolean
+  try {
+    stored = hasStoredOAuthSession()
+  } catch (err) {
+    // Misconfiguration (e.g. served on localhost): explain rather than show a form that can't work.
+    return { status: 'signed-out', notice: describeOAuthError(err) }
+  }
+  // Only show "restoring" when there's something to restore; otherwise go straight to sign-in.
+  return hasOAuthCallbackParams() || stored ? { status: 'restoring' } : { status: 'signed-out' }
+}
+
+/** "/at-papertrail/book/x" → "/book/x", for the router, which works below the base path. */
+function routerPath(appPath: string): string {
+  const base = import.meta.env.BASE_URL
+  return `/${appPath.slice(base.length)}`
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ status: 'loading' })
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [state, setState] = useState<AuthState>(initialState)
+  const signingOut = useRef(false)
+  // Expiry callbacks are tied to the session that issued them; a newer session ignores older ones.
+  const generation = useRef(0)
+
+  /** Nothing cached for one account may be shown to the next. */
+  const clearAppState = useCallback(() => {
+    queryClient.clear()
+    networkStore.reset()
+  }, [queryClient])
+
+  // A later migration lookup may refine the first, generic expiry notice.
+  const makeOnEnded = useCallback((): SessionEndedCallback => {
+    const issuedFor = generation.current
+    return (notice) => {
+      if (signingOut.current || issuedFor !== generation.current) return
+      clearAppState()
+      setState((prev) => {
+        // A generic expiry must not overwrite a specific explanation.
+        if (prev.status === 'signed-out') return notice ? { status: 'signed-out', notice } : prev
+        return { status: 'signed-out', notice: notice ?? 'Your session ended. Please sign in again.' }
+      })
+    }
+  }, [clearAppState])
 
   useEffect(() => {
-    // The loopback OAuth flow redirects to 127.0.0.1; IndexedDB is per-origin, so stay there.
-    if (window.location.hostname === 'localhost') {
-      const url = new URL(window.location.href)
-      url.hostname = '127.0.0.1'
-      window.location.replace(url)
-      return
+    if (state.status !== 'restoring') return
+    if (!restoreOnce) {
+      generation.current += 1
+      restoreOnce = restoreSession(makeOnEnded())
     }
     let cancelled = false
-    const ended = () => {
-      networkStore.reset()
-      setState({ status: 'signedOut', error: 'Your session ended. Please sign in again.' })
-    }
-    onSessionEnded.add(ended)
-    initOnce()
-      .then((result) => {
+    restoreOnce.then(
+      (restored) => {
         if (cancelled) return
-        if (result?.session) {
-          setState({ status: 'signedIn', did: result.session.did, session: result.session })
-        } else {
-          setState({ status: 'signedOut' })
+        if (!restored) {
+          setState({ status: 'signed-out' })
+          return
         }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setState({ status: 'signedOut', error: describe(err) })
-      })
+        setState({ status: 'signed-in', session: restored.session })
+        if (restored.returnTo) navigate(routerPath(restored.returnTo), { replace: true })
+      },
+      (err: unknown) => {
+        if (!cancelled) setState({ status: 'signed-out', notice: describeOAuthError(err) })
+      },
+    )
     return () => {
       cancelled = true
-      onSessionEnded.delete(ended)
     }
-  }, [])
+  }, [state.status, makeOnEnded, navigate])
 
-  const signIn = useCallback(async (handle: string) => {
-    const client = await getClient()
-    try {
-      await client.signInRedirect(handle.trim().replace(/^@/, ''), { scope: OAUTH_SCOPE })
-    } catch (err) {
-      setState({ status: 'signedOut', error: describe(err) })
-    }
+  const startOAuthSignIn = useCallback(async (identifier: string, returnTo?: string) => {
+    signingOut.current = false
+    await startOAuthSignInService(identifier, returnTo)
   }, [])
 
   const signOut = useCallback(async () => {
-    if (state.status !== 'signedIn') return
+    if (state.status !== 'signed-in') return
+    signingOut.current = true
     try {
-      await state.session.signOut()
+      await signOutOAuthSession(state.session)
+    } catch {
+      // The server-side session may outlive this, but local credentials are gone.
     } finally {
-      networkStore.reset()
-      setState({ status: 'signedOut' })
+      clearStoredOAuthSessions()
+      generation.current += 1
+      restoreOnce = null
+      clearAppState()
+      setState({ status: 'signed-out' })
     }
-  }, [state])
+  }, [state, clearAppState])
 
-  return <AuthContext.Provider value={{ state, signIn, signOut }}>{children}</AuthContext.Provider>
+  const value = useMemo(() => ({ state, startOAuthSignIn, signOut }), [state, startOAuthSignIn, signOut])
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {
@@ -124,6 +173,6 @@ export function useAuth(): AuthContextValue {
 /** The signed-in user. Only call this beneath the signed-in part of the app. */
 export function useSession(): { did: string; session: OAuthSession } {
   const { state } = useAuth()
-  if (state.status !== 'signedIn') throw new Error('Not signed in')
-  return { did: state.did, session: state.session }
+  if (state.status !== 'signed-in') throw new Error('useSession requires a signed-in session')
+  return { did: state.session.did, session: state.session }
 }

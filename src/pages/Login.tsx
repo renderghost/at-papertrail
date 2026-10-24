@@ -1,21 +1,39 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../lib/auth'
+import { describeError } from '../lib/errors'
+import { checkIdentifier } from '../lib/identity'
 
 const SPINES = ['#c8402a', '#e3a63b', '#f6f1e7', '#24543e', '#4b2a4f', '#c9dde3', '#c8402a', '#f6f1e7', '#e3a63b', '#24543e', '#7a3b2e', '#c9dde3']
 
-export function Login() {
-  const { state, signIn } = useAuth()
-  const [handle, setHandle] = useState('')
+export function Login({ notice }: { notice?: string }) {
+  const { startOAuthSignIn } = useAuth()
+  const [identifier, setIdentifier] = useState('')
+  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const error = state.status === 'signedOut' ? state.error : undefined
+  // A ref, not state: a double click lands before React re-renders.
+  const submitting = useRef(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!handle.trim()) return
+    if (submitting.current) return
+    const check = checkIdentifier(identifier)
+    if (!check.ok) {
+      setFieldError(check.message)
+      return
+    }
+    submitting.current = true
     setBusy(true)
-    await signIn(handle)
-    // Only reached if the redirect didn't happen.
-    setBusy(false)
+    setFieldError(null)
+    setError(null)
+    try {
+      // Come back to the page that asked for sign-in, e.g. a shared book link.
+      await startOAuthSignIn(check.value, window.location.pathname + window.location.search)
+    } catch (err) {
+      setError(describeError(err).message)
+      submitting.current = false
+      setBusy(false)
+    }
   }
 
   return (
@@ -27,34 +45,50 @@ export function Login() {
         </h1>
         <p className="lede">
           Log every book, see what the people you follow are reading, find your book club, and get your reading life
-          Covered. A better window onto your <a href="https://bookhive.buzz">BookHive</a> library — all of it stored on
+          Covered. A better window onto your <a href="https://bookhive.buzz">BookHive</a> library, all of it stored on
           your own PDS.
         </p>
-        <form onSubmit={submit} className="stack">
+        {notice && (
+          <div className="notice" role="status">
+            {notice}
+          </div>
+        )}
+        <form onSubmit={submit} noValidate className="stack">
           <div className="field">
-            <label htmlFor="handle">Your handle</label>
+            <label htmlFor="identifier">Handle or DID</label>
             <input
-              id="handle"
+              id="identifier"
               className="input"
               placeholder="alice.bsky.social"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
+              value={identifier}
+              aria-invalid={!!fieldError}
+              aria-describedby={fieldError ? 'identifier-error' : undefined}
+              onChange={(e) => {
+                setIdentifier(e.target.value)
+                if (fieldError) setFieldError(null)
+              }}
             />
+            {fieldError && (
+              <p id="identifier-error" className="field-error">
+                {fieldError}
+              </p>
+            )}
           </div>
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? 'Taking you to your PDS…' : 'Continue to sign in'}
+          </button>
           {error && (
             <div className="notice notice-error" role="alert">
               {error}
             </div>
           )}
-          <button className="btn btn-primary" type="submit" disabled={busy || !handle.trim()}>
-            {busy ? 'Opening sign-in…' : 'Sign in with your PDS'}
-          </button>
           <p className="muted small">
-            You'll sign in on your own PDS (Bluesky, or wherever your account lives). Papertrail only asks to write
-            BookHive book records; everything else it shows is public.
+            You'll be sent to your own PDS (Bluesky, or wherever your account lives) to approve access. Papertrail never
+            sees your password and can only write BookHive book records. This browser stays signed in until you sign
+            out or your PDS ends the session.
           </p>
         </form>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formFromRecord, isReRead, recordFromForm, type EditForm } from '../lib/bookhive/edit'
-import { StaleRecordError } from '../lib/bookhive/library'
+import { describeError } from '../lib/errors'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookStatus } from '../lib/bookhive/types'
 import { useBookWrites } from '../lib/hooks'
 import { StarInput } from './bits'
@@ -72,7 +72,7 @@ export function BookEditor({ entry, totalPagesHint }: { entry: BookEntry; totalP
       await update.mutateAsync({ entry, next: result.record })
       setSaved(true)
     } catch (err) {
-      setError(err instanceof StaleRecordError ? err.message : `Couldn't save: ${(err as Error).message}`)
+      setError(describeError(err).message)
     }
   }
 
@@ -81,7 +81,7 @@ export function BookEditor({ entry, totalPagesHint }: { entry: BookEntry; totalP
       await remove.mutateAsync(entry)
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof StaleRecordError ? err.message : `Couldn't remove: ${(err as Error).message}`)
+      setError(describeError(err).message)
       setConfirmDelete(false)
     }
   }

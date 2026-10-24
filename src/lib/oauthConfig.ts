@@ -3,7 +3,8 @@
  * emits `client-metadata.json`). Keep this file free of browser APIs.
  */
 
-import { BOOK_COLLECTION } from './bookhive/types'
+// Explicit extension: vite.config.ts loads this file outside the bundler.
+import { BOOK_COLLECTION } from './bookhive/types.ts'
 
 export const APP_NAME = 'Papertrail'
 
@@ -14,13 +15,11 @@ export const APP_NAME = 'Papertrail'
  */
 export const OAUTH_SCOPE = `atproto repo:${BOOK_COLLECTION}`
 
-/** Where the production build is served from. Must end with a slash. */
-export const DEFAULT_SITE_URL = 'https://renderghost.github.io/at-papertrail/'
-
 export function normaliseSiteUrl(url: string): string {
   return url.endsWith('/') ? url : `${url}/`
 }
 
+/** The OAuth client document for a deployed site URL (origin plus base path, ending in "/"). */
 export function clientMetadata(siteUrl: string) {
   const site = normaliseSiteUrl(siteUrl)
   return {
@@ -36,14 +35,4 @@ export function clientMetadata(siteUrl: string) {
     application_type: 'web',
     dpop_bound_access_tokens: true,
   } as const
-}
-
-/**
- * The atproto loopback client used during local development: no metadata file
- * is needed, but the redirect must go to 127.0.0.1 rather than localhost.
- */
-export function loopbackClientId(location: { port: string; pathname: string }): string {
-  const redirectUri = `http://127.0.0.1${location.port ? `:${location.port}` : ''}${location.pathname}`
-  const params = new URLSearchParams({ redirect_uri: redirectUri, scope: OAUTH_SCOPE })
-  return `http://localhost?${params.toString()}`
 }

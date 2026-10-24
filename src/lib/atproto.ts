@@ -1,9 +1,9 @@
 /**
  * Unauthenticated AT Protocol reads. Everything here is public data: profiles
- * and follows from the Bluesky AppView, records straight from each user's PDS.
+ * and follows from the Bluesky AppView, records straight from each user's PDS
+ * (found via `resolvePds` in ./identity).
  */
 
-const PLC_DIRECTORY = 'https://plc.directory'
 const APPVIEW = 'https://public.api.bsky.app'
 
 export class HttpError extends Error {
@@ -28,42 +28,6 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
     throw new HttpError(res.status, body.error, body.message ?? `${res.status} from ${new URL(url).host}`)
   }
   return res.json() as Promise<T>
-}
-
-type DidDocument = {
-  id: string
-  alsoKnownAs?: string[]
-  service?: { id: string; type: string; serviceEndpoint: string }[]
-}
-
-const pdsCache = new Map<string, Promise<string>>()
-
-/** The PDS origin hosting a DID's repo, e.g. "https://morel.us-east.host.bsky.network". */
-export function resolvePds(did: string): Promise<string> {
-  let cached = pdsCache.get(did)
-  if (!cached) {
-    cached = fetchPds(did)
-    cached.catch(() => pdsCache.delete(did))
-    pdsCache.set(did, cached)
-  }
-  return cached
-}
-
-async function fetchPds(did: string): Promise<string> {
-  let doc: DidDocument
-  if (did.startsWith('did:plc:')) {
-    doc = await getJson<DidDocument>(`${PLC_DIRECTORY}/${did}`)
-  } else if (did.startsWith('did:web:')) {
-    const host = decodeURIComponent(did.slice('did:web:'.length))
-    doc = await getJson<DidDocument>(`https://${host}/.well-known/did.json`)
-  } else {
-    throw new Error(`Unsupported DID method: ${did}`)
-  }
-  const pds = doc.service?.find(
-    (s) => (s.id === '#atproto_pds' || s.id === `${did}#atproto_pds`) && s.type === 'AtprotoPersonalDataServer',
-  )
-  if (!pds) throw new Error(`${did} has no PDS in its DID document`)
-  return pds.serviceEndpoint.replace(/\/+$/, '')
 }
 
 export type RawRecord<T> = { uri: string; cid: string; value: T }

@@ -1,4 +1,5 @@
-import { blobUrl, getRecord, resolvePds } from '../atproto'
+import { blobUrl, getRecord } from '../atproto'
+import { resolvePds } from '../identity'
 import { createLimiter } from '../pool'
 import { BOOKHIVE_DID, CATALOG_COLLECTION, blobCid, type CatalogBook } from './types'
 

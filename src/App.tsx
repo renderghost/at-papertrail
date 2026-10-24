@@ -14,14 +14,14 @@ import { Profile } from './pages/Profile'
 
 function Gate() {
   const { state } = useAuth()
-  if (state.status === 'loading') {
+  if (state.status === 'restoring') {
     return (
       <div className="page">
         <Loading>Opening your library…</Loading>
       </div>
     )
   }
-  if (state.status === 'signedOut') return <Login />
+  if (state.status === 'signed-out') return <Login notice={state.notice} />
   return (
     <Routes>
       <Route element={<Layout />}>

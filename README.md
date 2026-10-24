@@ -27,6 +27,13 @@ Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book
 ```
 
 - **OAuth scope** is `atproto repo:buzz.bookhive.book`: Papertrail can only create, edit and delete BookHive book records. Everything it reads is public.
+- **Sign-in** follows the pattern from [renderghost/at-assemblage#13](https://github.com/renderghost/at-assemblage/pull/13), using `@atcute/oauth-browser-client` (`src/lib/oauth.ts`, `src/lib/auth.tsx`):
+  - Handles resolve over DNS-over-HTTPS and XRPC in a race; DID documents come from PLC or did:web.
+  - The callback is read from the fragment or the query string, consumed once, and scrubbed from the URL. You land back on the page that asked you to sign in.
+  - A session is restored once per page load (refresh tokens are single-use), with no loading flash when there's nothing to restore.
+  - When the PDS rejects a token, Papertrail probes the grant. Credentials are deleted only if it is truly dead, never on a network blip. If your account moved PDS, the sign-in screen says so.
+  - Signing in, signing out and session expiry all clear cached data, and stale expiry callbacks are ignored.
+  - Every auth and PDS failure goes through one `describeError` (`src/lib/errors.ts`), so the UI only ever shows safe, actionable text.
 - **Edits are compare-and-swap** (`swapRecord`), so a change made in bookhive.buzz is never silently overwritten. Fields Papertrail doesn't know about are preserved.
 - **hiveIds** are reproduced exactly as BookHive generates them (`src/lib/bookhive/hiveId.ts`). This is pinned to `ohash@1` and verified against a real production id.
 - **Status and date rules** mirror BookHive's `core/bookLifecycle.ts` (`src/lib/bookhive/lifecycle.ts`).
@@ -47,16 +54,16 @@ npm test           # unit tests for the domain logic
 npm run build      # typecheck + production build into dist/
 ```
 
-Use `127.0.0.1`, not `localhost`: the loopback OAuth flow redirects there, and browser storage is per-origin. The app redirects you automatically if you do open `localhost`.
+Use `127.0.0.1`, not `localhost`. atproto's loopback OAuth client redirects there, and OAuth state is per-origin, so on `localhost` the sign-in screen explains this rather than offering a flow that can't finish.
 
-Optional: set `VITE_GOOGLE_BOOKS_API_KEY` for a higher Google Books quota. Search works without it.
+Optional: put `VITE_GOOGLE_BOOKS_API_KEY=…` in `.env.local` for a higher Google Books quota. Search works without it.
 
 ## Deploying (GitHub Pages)
 
 1. In the repo settings, go to **Pages** and set **Source** to **GitHub Actions**.
 2. Merge to `main`. `.github/workflows/deploy.yml` tests, builds and publishes to `https://renderghost.github.io/at-papertrail/`.
 
-The build writes `client-metadata.json` (the OAuth client document) for the site URL, plus a `404.html` so deep links work. If you move to a custom domain, set a repository variable `SITE_URL` (e.g. `https://papertrail.example/`), because the OAuth client id is derived from it. You can also set a `GOOGLE_BOOKS_API_KEY` variable.
+The site URL lives in the committed `.env` as `VITE_SITE_URL`. The build generates the OAuth client document (`client-metadata.json`) and the base path from it, and **fails** if it's missing rather than shipping a sign-in that can't work. `npm run dev` also serves the document at `/client-metadata.json` so you can inspect it. If you move to a custom domain, change `VITE_SITE_URL`. A `404.html` copy of the app makes deep links work on GitHub Pages.
 
 ## Future scope
 

@@ -566,6 +566,15 @@ p {
   accent-color: var(--accent);
 }
 
+.field-error {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
 /* ——— Notices ——— */
 
 .notice {
@@ -1246,16 +1255,6 @@ p {
   grid-template-columns: 1.1fr 1fr;
 }
 
-@media (max-width: 860px) {
-  .login {
-    grid-template-columns: 1fr;
-  }
-
-  .login-art {
-    display: none;
-  }
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
@@ -1316,6 +1315,16 @@ p {
   flex: 1;
   border-radius: 2px;
   opacity: 0.9;
+}
+
+@media (max-width: 860px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .login-art {
+    display: none;
+  }
 }
 
 /* ——— Covered ——— */
