@@ -46,11 +46,27 @@ function oauthClientMetadata(site: ResolvedSiteUrl | null, strict: boolean): Plu
   }
 }
 
+/**
+ * Stamps index.html with the commit it was built from, so a deployment check
+ * can tell when the domain serves that commit (see verify-deployment.yml).
+ */
+function buildStamp(commit: string | undefined): Plugin {
+  return {
+    name: 'papertrail-build-stamp',
+    apply: 'build',
+    transformIndexHtml: () =>
+      commit && /^[0-9a-f]{7,40}$/i.test(commit)
+        ? [{ tag: 'meta', attrs: { name: 'papertrail-build', content: commit }, injectTo: 'head' }]
+        : [],
+  }
+}
+
 export default defineConfig(({ command, mode, isPreview }) => {
   // With an empty prefix, loadEnv returns .env files plus every process variable, VERCEL_* included.
   const env = loadEnv(mode, process.cwd(), '')
   const site = resolveSiteUrl(env)
   const strict = env.VERCEL === '1' || env.CI === 'true'
+  const commit = env.VERCEL_GIT_COMMIT_SHA || env.GITHUB_SHA
   return {
     // The built app (and `vite preview` of it) lives under the site URL's path: "/" on Vercel.
     base: (command === 'build' || isPreview) && site ? new URL(site.url).pathname : '/',
@@ -58,7 +74,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
       // The URL this build's OAuth metadata describes; the app refuses to start sign-in anywhere else.
       __SITE_URL__: JSON.stringify(site?.url ?? ''),
     },
-    plugins: [react(), oauthClientMetadata(site, strict)],
+    plugins: [react(), oauthClientMetadata(site, strict), buildStamp(commit)],
     // Serve dev over the loopback IP, which atproto's loopback OAuth client requires.
     server: { host: '127.0.0.1', port: 5173, strictPort: true },
     preview: { host: '127.0.0.1' },

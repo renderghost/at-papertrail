@@ -9,7 +9,8 @@
     "build": "tsc -p . && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:deployment": "node scripts/check-deployment.mjs"
   },
   "dependencies": {
     "@atcute/identity-resolver": "^2.0.3",
