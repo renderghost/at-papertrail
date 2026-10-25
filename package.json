@@ -1,0 +1,38 @@
+{
+  "name": "papertrail",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A social reading client for BookHive on the AT Protocol",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@atcute/identity-resolver": "^2.0.3",
+    "@atcute/lexicons": "^2.1.1",
+    "@atcute/oauth-browser-client": "^5.1.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tanstack/react-query": "^5.104.5",
+    "ohash": "1.1.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@atcute/oauth-crypto": "^1.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
