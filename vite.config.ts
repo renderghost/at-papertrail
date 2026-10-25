@@ -69,11 +69,11 @@ function spaFallback(): Plugin {
   }
 }
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command, mode, isPreview }) => {
   const site = siteUrl(mode)
   return {
-    // The app lives under the site URL's path (e.g. /at-papertrail/) once built.
-    base: command === 'build' && site ? new URL(site).pathname : '/',
+    // The built app (and `vite preview` of it) lives under the site URL's path, e.g. /at-papertrail/.
+    base: (command === 'build' || isPreview) && site ? new URL(site).pathname : '/',
     plugins: [react(), oauthClientMetadata(mode), spaFallback()],
     // Serve dev over the loopback IP, which atproto's loopback OAuth client requires.
     server: { host: '127.0.0.1', port: 5173, strictPort: true },

@@ -60,10 +60,15 @@ Optional: put `VITE_GOOGLE_BOOKS_API_KEY=…` in `.env.local` for a higher Googl
 
 ## Deploying (GitHub Pages)
 
-1. In the repo settings, go to **Pages** and set **Source** to **GitHub Actions**.
-2. Merge to `main`. `.github/workflows/deploy.yml` tests, builds and publishes to `https://renderghost.github.io/at-papertrail/`.
+Full step-by-step guide, including custom domains, rollback and troubleshooting: **[docs/deployment.md](docs/deployment.md)**.
 
-The site URL lives in the committed `.env` as `VITE_SITE_URL`. The build generates the OAuth client document (`client-metadata.json`) and the base path from it, and **fails** if it's missing rather than shipping a sign-in that can't work. `npm run dev` also serves the document at `/client-metadata.json` so you can inspect it. If you move to a custom domain, change `VITE_SITE_URL`. A `404.html` copy of the app makes deep links work on GitHub Pages.
+First deployment, in short:
+
+1. At **Settings → Pages**, set **Source** to **GitHub Actions**.
+2. Merge to `main`. The workflow tests, builds and publishes to `https://renderghost.github.io/at-papertrail/`, then a `verify` job checks the live site can sign you in.
+3. Open the site, sign in with your handle, and check your BookHive books appear.
+
+The site URL lives in the committed `.env` as `VITE_SITE_URL`. The OAuth client document (`client-metadata.json`) and the base path are generated from it, and the build fails without it. To preview the production build locally: `npm run build && npm run preview`, then open `http://127.0.0.1:4173/at-papertrail/`.
 
 ## Future scope
 
