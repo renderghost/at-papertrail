@@ -69,7 +69,7 @@ if (meta.error) {
 
   if (flag('--expect-vercel')) {
     if (/vercel/i.test(server)) pass('served by Vercel')
-    else fail('served by Vercel', `server is "${server}": DNS for ${site.host} doesn't point at Vercel yet (CNAME → cname.vercel-dns.com, DNS only)`)
+    else fail('served by Vercel', `server is "${server}": DNS for ${site.host} doesn't point at Vercel yet (CNAME to the target shown in Vercel → Domains, DNS only)`)
   }
 
   if (res.status === 200) {
