@@ -64,11 +64,11 @@ Full step-by-step guide, including custom domains, rollback and troubleshooting:
 
 First deployment, in short:
 
-1. At **Settings → Pages**, set **Source** to **GitHub Actions**.
-2. Merge to `main`. The workflow tests, builds and publishes to `https://renderghost.github.io/at-papertrail/`, then a `verify` job checks the live site can sign you in.
+1. At **Settings → Pages**, set **Source** to **GitHub Actions** (not "Deploy from a branch") and keep the custom domain `papertrail.renderg.host`.
+2. Merge to `main`. The workflow tests, builds and publishes to `https://papertrail.renderg.host/`, then a `verify` job checks the live site can sign you in.
 3. Open the site, sign in with your handle, and check your BookHive books appear.
 
-The site URL lives in the committed `.env` as `VITE_SITE_URL`. The OAuth client document (`client-metadata.json`) and the base path are generated from it, and the build fails without it. To preview the production build locally: `npm run build && npm run preview`, then open `http://127.0.0.1:4173/at-papertrail/`.
+The site URL lives in the committed `.env` as `VITE_SITE_URL`. The OAuth client document (`client-metadata.json`) and the base path are generated from it, and the build fails without it. To preview the production build locally: `npm run build && npm run preview`, then open `http://127.0.0.1:4173/`.
 
 ## Future scope
 
