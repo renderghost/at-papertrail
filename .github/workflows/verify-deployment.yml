@@ -1,11 +1,16 @@
 name: Verify deployment
 
-# Vercel reports every deployment to GitHub. When a production deployment
-# succeeds, check the live site can sign people in: client metadata reachable
+# Vercel deploys main to production on its own. After each push to main, wait
+# until the domain serves that commit's build (its papertrail-build meta tag),
+# then check the live site can sign people in: client metadata reachable
 # without a redirect and naming itself as client_id, served by Vercel, security
 # headers present, routing intact. See scripts/check-deployment.mjs.
+#
+# Keyed on the push rather than on Vercel's deployment events, so it doesn't
+# depend on which events the Vercel GitHub integration sends.
 on:
-  deployment_status:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       url:
@@ -15,6 +20,12 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes the wait: Vercel cancels the older build, and the
+# older commit would never be served.
+concurrency:
+  group: verify-deployment
+  cancel-in-progress: true
+
 env:
   # The canonical production URL. A production deployment's own *.vercel.app URL
   # sits behind Vercel Deployment Protection, so check the domain people use.
@@ -22,11 +33,8 @@ env:
 
 jobs:
   verify:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-      startsWith(github.event.deployment.environment, 'Production'))
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -35,5 +43,11 @@ jobs:
       - name: Check the live site
         env:
           SITE_URL: ${{ inputs.url || env.PRODUCTION_URL }}
-        # Retries cover the moment between "deployment ready" and the domain alias moving.
-        run: node scripts/check-deployment.mjs "$SITE_URL" --retries 6 --expect-vercel
+          EXPECT_BUILD: ${{ github.event_name == 'push' && github.sha || '' }}
+        # On a push, wait up to 10 minutes (30 × 20 s) for Vercel to build and alias the commit.
+        run: |
+          if [ -n "$EXPECT_BUILD" ]; then
+            node scripts/check-deployment.mjs "$SITE_URL" --expect-vercel --expect-build "$EXPECT_BUILD" --retries 30
+          else
+            node scripts/check-deployment.mjs "$SITE_URL" --expect-vercel --retries 3
+          fi

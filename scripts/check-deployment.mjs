@@ -2,13 +2,15 @@
 /**
  * Checks a deployed Papertrail can actually sign people in, the way a PDS and a
  * browser see it. Used by .github/workflows/verify-deployment.yml after each
- * production deployment; run it yourself with:
+ * push to main; run it yourself with:
  *
  *   npm run check:deployment -- https://papertrail.renderg.host/
  *
  * Options:
  *   --retries <n>   attempts for the first request, 20 s apart (default 1),
- *                   for CDNs and domain aliases that take a moment to update
+ *                   for builds, CDNs and domain aliases that take a moment
+ *   --expect-build <sha>  first wait (within --retries) until the site serves
+ *                   the build of this commit, read from its papertrail-build meta tag
  *   --expect-vercel fail unless the site is served by Vercel
  *   --fetch-from <origin>  request this origin instead of the site's own (for
  *                   testing a build locally; the checks still expect the site URL)
@@ -20,10 +22,14 @@ const option = (name, fallback) => {
   const i = args.indexOf(name)
   return i >= 0 ? args[i + 1] : fallback
 }
-const positional = args.filter((a, i) => !a.startsWith('--') && !['--retries', '--fetch-from'].includes(args[i - 1]))
+const valued = ['--retries', '--expect-build', '--fetch-from']
+const positional = args.filter((a, i) => !a.startsWith('--') && !valued.includes(args[i - 1]))
 const site = positional[0] && new URL(positional[0].endsWith('/') ? positional[0] : `${positional[0]}/`)
-if (!site) {
-  console.error('Usage: check-deployment.mjs <site-url> [--retries n] [--expect-vercel] [--fetch-from origin]')
+const expectBuild = option('--expect-build', '')
+if (!site || (expectBuild && !/^[0-9a-f]{7,40}$/i.test(expectBuild))) {
+  console.error(
+    'Usage: check-deployment.mjs <site-url> [--retries n] [--expect-build sha] [--expect-vercel] [--fetch-from origin]',
+  )
   process.exit(2)
 }
 const retries = Number(option('--retries', '1'))
@@ -43,16 +49,37 @@ async function get(path) {
 
 const clientId = `${site.href}client-metadata.json`
 
+// 0. Wait for the commit's build: Vercel deploys main on its own schedule.
+if (expectBuild) {
+  let served
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const { res, body } = await get('/')
+      served = body.match(/<meta name="papertrail-build" content="([0-9a-f]+)"/i)?.[1]?.toLowerCase() ?? `no build stamp (HTTP ${res.status})`
+    } catch (err) {
+      served = err.message
+    }
+    if (served.startsWith(expectBuild.toLowerCase())) break
+    if (attempt < retries) {
+      console.log(`Attempt ${attempt}: serving ${served}, waiting for ${expectBuild}; retrying in 20 s…`)
+      await sleep(20_000)
+    }
+  }
+  if (served.startsWith(expectBuild.toLowerCase())) pass('serves the expected build', served)
+  else fail('serves the expected build', `still serving ${served}, not ${expectBuild}: check its deployment in Vercel → Deployments`)
+}
+
 // 1. Client metadata: what every PDS fetches during sign-in.
 let meta
-for (let attempt = 1; attempt <= retries; attempt++) {
+const metaAttempts = expectBuild ? 1 : retries
+for (let attempt = 1; attempt <= metaAttempts; attempt++) {
   try {
     meta = await get('/client-metadata.json')
     if (meta.res.status === 200) break
   } catch (err) {
     meta = { error: err }
   }
-  if (attempt < retries) {
+  if (attempt < metaAttempts) {
     console.log(`Attempt ${attempt}: ${meta.error ? meta.error.message : `HTTP ${meta.res.status}`}; retrying in 20 s…`)
     await sleep(20_000)
   }

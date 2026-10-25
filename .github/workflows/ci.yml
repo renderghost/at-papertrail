@@ -37,3 +37,6 @@ jobs:
           test "$(jq -r .client_id dist/client-metadata.json)" = "https://papertrail.renderg.host/client-metadata.json"
           test "$(jq -r '.redirect_uris[0]' dist/client-metadata.json)" = "https://papertrail.renderg.host/"
           echo "OK"
+      # verify-deployment.yml waits for this stamp (Vercel builds use VERCEL_GIT_COMMIT_SHA).
+      - name: The build is stamped with its commit
+        run: grep -q "<meta name=\"papertrail-build\" content=\"$GITHUB_SHA\">" dist/index.html && echo "OK"
