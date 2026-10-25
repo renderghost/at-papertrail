@@ -39,7 +39,7 @@ function oauthClientMetadata(mode: string): Plugin {
       if (!site) {
         this.error(
           'No public site URL is configured, so the OAuth client metadata cannot be generated and sign-in ' +
-            'would fail in production. Set VITE_SITE_URL (e.g. https://renderghost.github.io/at-papertrail/).',
+            'would fail in production. Set VITE_SITE_URL in .env (e.g. https://papertrail.renderg.host/).',
         )
         return
       }
@@ -69,11 +69,12 @@ function spaFallback(): Plugin {
   }
 }
 
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command, mode, isPreview }) => {
   const site = siteUrl(mode)
   return {
-    // The app lives under the site URL's path (e.g. /at-papertrail/) once built.
-    base: command === 'build' && site ? new URL(site).pathname : '/',
+    // The built app (and `vite preview` of it) lives under the site URL's path: "/" on a custom domain,
+    // "/<repo>/" on a github.io project URL.
+    base: (command === 'build' || isPreview) && site ? new URL(site).pathname : '/',
     plugins: [react(), oauthClientMetadata(mode), spaFallback()],
     // Serve dev over the loopback IP, which atproto's loopback OAuth client requires.
     server: { host: '127.0.0.1', port: 5173, strictPort: true },
