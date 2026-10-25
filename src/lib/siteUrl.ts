@@ -13,13 +13,14 @@ export type SiteEnv = {
   /** Vercel system variables, exposed to builds by default. */
   VERCEL_ENV?: string
   VERCEL_URL?: string
+  VERCEL_BRANCH_URL?: string
   VERCEL_PROJECT_PRODUCTION_URL?: string
 }
 
 export type ResolvedSiteUrl = {
   url: string
   /** Where the value came from, for build logs. */
-  source: 'VITE_SITE_URL' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_URL'
+  source: 'VITE_SITE_URL' | 'VERCEL_PROJECT_PRODUCTION_URL' | 'VERCEL_BRANCH_URL' | 'VERCEL_URL'
 }
 
 export function normaliseSiteUrl(url: string): string {
@@ -44,15 +45,19 @@ function validated(url: string, source: ResolvedSiteUrl['source']): ResolvedSite
 }
 
 /**
- * - Vercel preview: the deployment's own URL, always. A preview must never
- *   claim to be production, even when VITE_SITE_URL is set for every environment.
+ * - Vercel preview: its branch URL (what Vercel's PR comment links, always the
+ *   branch's latest deployment), else the deployment's own URL. A preview must
+ *   never claim to be production, even when VITE_SITE_URL is set everywhere.
  * - Otherwise an explicit VITE_SITE_URL wins.
  * - Vercel production: the project's production domain (the shortest custom
  *   domain once one is added, else its vercel.app domain).
  * - Anything else (local builds, `vercel dev`): null.
  */
 export function resolveSiteUrl(env: SiteEnv): ResolvedSiteUrl | null {
-  if (env.VERCEL_ENV === 'preview' && env.VERCEL_URL) return validated(https(env.VERCEL_URL), 'VERCEL_URL')
+  if (env.VERCEL_ENV === 'preview') {
+    if (env.VERCEL_BRANCH_URL) return validated(https(env.VERCEL_BRANCH_URL), 'VERCEL_BRANCH_URL')
+    if (env.VERCEL_URL) return validated(https(env.VERCEL_URL), 'VERCEL_URL')
+  }
   const explicit = env.VITE_SITE_URL?.trim()
   if (explicit) return validated(explicit, 'VITE_SITE_URL')
   if (env.VERCEL_ENV === 'production' && env.VERCEL_PROJECT_PRODUCTION_URL) {

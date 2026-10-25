@@ -20,7 +20,7 @@ alongside the other `renderg.host` apps in the `renderghost` Vercel team. Nothin
 | Build | Site URL | So sign-in works on |
 | --- | --- | --- |
 | Production (`main`) | `https://$VERCEL_PROJECT_PRODUCTION_URL`: the custom domain once added, else `<project>.vercel.app` | `papertrail.renderg.host` |
-| Preview (pull requests, branches) | `https://$VERCEL_URL`, the deployment's own URL | that deployment URL (see [Previews](#preview-deployments)) |
+| Preview (pull requests, branches) | `https://$VERCEL_BRANCH_URL`, the branch URL Vercel's PR comment links (else the deployment's own `$VERCEL_URL`) | the branch URL (see [Previews](#preview-deployments)) |
 | `VITE_SITE_URL` set | that value; previews still use their own URL | the URL you set |
 | Local `npm run build` | none: no `client-metadata.json`, with a warning | `127.0.0.1` only (atproto's loopback client) |
 
@@ -37,19 +37,19 @@ About ten minutes, by the owner of the `renderghost` Vercel team and the `render
 1. Open **https://vercel.com/new** and choose the **renderghost** team.
 2. **Import Git Repository** → `renderghost/at-papertrail`.
 3. Project name `at-papertrail`. The framework preset (Vite), build and output settings come from `vercel.json`, so leave them alone.
-4. **No environment variables are needed.** Leave *Automatically expose System Environment Variables* on (the default), because the build reads `VERCEL_ENV`, `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL`.
+4. **No environment variables are needed.** Leave *Automatically expose System Environment Variables* on (the default), because the build reads `VERCEL_ENV`, `VERCEL_BRANCH_URL`, `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL`. Node.js 24 comes from `engines` in `package.json`.
 5. **Deploy.** The first production build describes `at-papertrail.vercel.app` until the domain is added.
 
 ### 2. Add the domain
 
 1. Project → **Settings → Domains** → **Add** → `papertrail.renderg.host` → assign it to **Production**.
-2. Vercel shows *Invalid Configuration* and asks for a `CNAME` to `cname.vercel-dns.com`. That's expected until step 3.
+2. Vercel shows *Invalid Configuration* and the `CNAME` target it wants. That's expected until step 3.
 
 ### 3. Point DNS at Vercel (Cloudflare)
 
 1. Cloudflare → **renderg.host** → **DNS → Records**.
 2. Edit the existing `papertrail` record, which currently points to `renderghost.github.io`:
-   - **Type** `CNAME`, **Name** `papertrail`, **Target** `cname.vercel-dns.com`
+   - **Type** `CNAME`, **Name** `papertrail`, **Target**: the value Vercel shows under Domains, a project-specific host like `db58eeaea4aee7b5.vercel-dns-017.com` (the generic `cname.vercel-dns.com` also works)
    - **Proxy status: DNS only** (grey cloud), like the other `renderg.host` apps. Vercel issues the HTTPS certificate itself.
 3. Back in Vercel → **Domains**, wait for *Valid Configuration* and the certificate. Usually a minute or two.
 

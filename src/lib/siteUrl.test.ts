@@ -12,14 +12,24 @@ describe('resolveSiteUrl', () => {
     ).toEqual({ url: 'https://papertrail.renderg.host/', source: 'VERCEL_PROJECT_PRODUCTION_URL' })
   })
 
-  it("uses a preview deployment's own URL", () => {
+  it("uses a preview's branch URL, the one Vercel's PR comment links", () => {
     expect(
       resolveSiteUrl({
         VERCEL_ENV: 'preview',
-        VERCEL_URL: 'at-papertrail-git-feature-renderghost.vercel.app',
+        VERCEL_URL: 'at-papertrail-c70psa5t5-renderghost.vercel.app',
+        VERCEL_BRANCH_URL: 'at-papertrail-git-claude-vercel-m1-build-renderghost.vercel.app',
         VERCEL_PROJECT_PRODUCTION_URL: 'papertrail.renderg.host',
       }),
-    ).toEqual({ url: 'https://at-papertrail-git-feature-renderghost.vercel.app/', source: 'VERCEL_URL' })
+    ).toEqual({
+      url: 'https://at-papertrail-git-claude-vercel-m1-build-renderghost.vercel.app/',
+      source: 'VERCEL_BRANCH_URL',
+    })
+  })
+
+  it("falls back to a preview deployment's own URL without a branch", () => {
+    expect(
+      resolveSiteUrl({ VERCEL_ENV: 'preview', VERCEL_URL: 'at-papertrail-c70psa5t5-renderghost.vercel.app' }),
+    ).toEqual({ url: 'https://at-papertrail-c70psa5t5-renderghost.vercel.app/', source: 'VERCEL_URL' })
   })
 
   it('never lets a preview claim to be production, even with VITE_SITE_URL set everywhere', () => {
@@ -28,8 +38,9 @@ describe('resolveSiteUrl', () => {
         VITE_SITE_URL: 'https://papertrail.renderg.host/',
         VERCEL_ENV: 'preview',
         VERCEL_URL: 'at-papertrail-xyz.vercel.app',
+        VERCEL_BRANCH_URL: 'at-papertrail-git-feature-renderghost.vercel.app',
       })?.url,
-    ).toBe('https://at-papertrail-xyz.vercel.app/')
+    ).toBe('https://at-papertrail-git-feature-renderghost.vercel.app/')
   })
 
   it('lets an explicit VITE_SITE_URL pin production or configure another host', () => {
