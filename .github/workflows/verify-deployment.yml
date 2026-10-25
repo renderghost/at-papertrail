@@ -1,0 +1,39 @@
+name: Verify deployment
+
+# Vercel reports every deployment to GitHub. When a production deployment
+# succeeds, check the live site can sign people in: client metadata reachable
+# without a redirect and naming itself as client_id, served by Vercel, security
+# headers present, routing intact. See scripts/check-deployment.mjs.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Site URL to check
+        default: https://papertrail.renderg.host/
+
+permissions:
+  contents: read
+
+env:
+  # The canonical production URL. A production deployment's own *.vercel.app URL
+  # sits behind Vercel Deployment Protection, so check the domain people use.
+  PRODUCTION_URL: https://papertrail.renderg.host/
+
+jobs:
+  verify:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+      startsWith(github.event.deployment.environment, 'Production'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check the live site
+        env:
+          SITE_URL: ${{ inputs.url || env.PRODUCTION_URL }}
+        # Retries cover the moment between "deployment ready" and the domain alias moving.
+        run: node scripts/check-deployment.mjs "$SITE_URL" --retries 6 --expect-vercel
