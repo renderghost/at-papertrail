@@ -41,6 +41,7 @@ import {
   resolveDidDocument,
 } from './identity'
 import { OAUTH_SCOPE } from './oauthConfig'
+import { originMismatch } from './siteUrl'
 import type { SessionFetch } from './xrpc'
 
 export type OAuthSession = SessionFetch & {
@@ -84,6 +85,9 @@ function ensureConfigured(): void {
       `Sign-in needs Papertrail served on 127.0.0.1, not localhost. Open ${origin.replace('localhost', '127.0.0.1')}${import.meta.env.BASE_URL} instead.`,
     )
   }
+  // e.g. a production deployment's unique *.vercel.app URL: its metadata names the production domain.
+  const mismatch = originMismatch(origin, __SITE_URL__)
+  if (mismatch) throw new AppError('config', mismatch)
 
   const metadata = LOOPBACK.test(origin)
     ? loopbackClient(origin)

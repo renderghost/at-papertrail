@@ -95,10 +95,20 @@ export function describeError(err: unknown): DescribedError {
       return { kind: 'network', message: 'The sign-in server had a problem. Try again shortly.', retryable: true }
     }
     if (err.error === 'invalid_grant' || err.error === 'invalid_token') return EXPIRED
+    if (err.error === 'invalid_client_metadata' || err.error === 'invalid_client') {
+      // The PDS fetches client-metadata.json from its own servers: anything that blocks them (a
+      // protected preview deployment, a proxy, a wrong URL) ends up here.
+      return {
+        kind: 'config',
+        message: `Your PDS couldn't load Papertrail's sign-in details (${err.error}${err.description ? `: ${err.description}` : ''}).`,
+        retryable: false,
+      }
+    }
     if (err.error === 'invalid_request' && err.description) {
       return { kind: 'config', message: `Papertrail's sign-in is misconfigured: ${err.description}`, retryable: false }
     }
-    return { kind: 'unknown', message: 'Sign-in failed. Please try again.', retryable: true }
+    // Name the OAuth error code: it's what anyone debugging the sign-in needs first.
+    return { kind: 'unknown', message: `Sign-in failed${err.error ? ` (${err.error})` : ''}. Please try again.`, retryable: true }
   }
   // The reply wasn't the JSON the OAuth client expected.
   if (err instanceof FetchResponseError) {

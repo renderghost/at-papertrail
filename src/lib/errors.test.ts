@@ -37,6 +37,20 @@ describe('describeError for OAuth failures', () => {
     })
     expect(describeError(err).message).toContain('redirect_uri not registered')
   })
+
+  it('says when the PDS could not load the client metadata, with its reason', () => {
+    const err = new OAuthResponseError(new Response('', { status: 400 }), {
+      error: 'invalid_client_metadata',
+      error_description: 'Failed to fetch client metadata: 403',
+    })
+    expect(describeError(err)).toMatchObject({ kind: 'config', retryable: false })
+    expect(describeError(err).message).toContain('invalid_client_metadata: Failed to fetch client metadata: 403')
+  })
+
+  it('names the OAuth error code for anything else', () => {
+    const err = new OAuthResponseError(new Response('', { status: 400 }), { error: 'invalid_scope' })
+    expect(describeError(err).message).toBe('Sign-in failed (invalid_scope). Please try again.')
+  })
 })
 
 describe('describeError for PDS writes', () => {

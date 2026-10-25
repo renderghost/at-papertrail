@@ -3,8 +3,9 @@
  * emits `client-metadata.json`). Keep this file free of browser APIs.
  */
 
-// Explicit extension: vite.config.ts loads this file outside the bundler.
+// Explicit extensions: vite.config.ts loads this file outside the bundler.
 import { BOOK_COLLECTION } from './bookhive/types.ts'
+import { normaliseSiteUrl } from './siteUrl.ts'
 
 export const APP_NAME = 'Papertrail'
 
@@ -14,10 +15,6 @@ export const APP_NAME = 'Papertrail'
  * else. Everything the app reads is public.
  */
 export const OAUTH_SCOPE = `atproto repo:${BOOK_COLLECTION}`
-
-export function normaliseSiteUrl(url: string): string {
-  return url.endsWith('/') ? url : `${url}/`
-}
 
 /** The OAuth client document for a deployed site URL (origin plus base path, ending in "/"). */
 export function clientMetadata(siteUrl: string) {
