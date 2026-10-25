@@ -14,6 +14,7 @@ alongside the other `renderg.host` apps in the `renderghost` Vercel team. Nothin
 | [`src/lib/siteUrl.ts`](../src/lib/siteUrl.ts) | Decides which URL each build describes (below). |
 | `client-metadata.json` | Generated per build from that URL. A PDS fetches it during sign-in and only proceeds if its `client_id` is exactly the URL it was fetched from. |
 | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Typecheck, tests and a production build on every pull request and push to `main`. |
+| [`.github/workflows/verify-deployment.yml`](../.github/workflows/verify-deployment.yml) | After every push to `main`, waits for the domain to serve that commit, then runs [`scripts/check-deployment.mjs`](../scripts/check-deployment.mjs) against it ([below](#automatic-checks-after-each-deployment)). |
 
 ### Which URL a build describes
 
@@ -33,6 +34,8 @@ On Vercel, a build with no site URL at all fails rather than shipping a sign-in 
 About ten minutes, by the owner of the `renderghost` Vercel team and the `renderg.host` Cloudflare zone.
 
 ### 1. Create the Vercel project
+
+This needs a person: the Vercel connector Claude uses can read the team but isn't allowed to create projects.
 
 1. Open **https://vercel.com/new** and choose the **renderghost** team.
 2. **Import Git Repository** → `renderghost/at-papertrail`.
@@ -71,17 +74,26 @@ The old Pages deploy workflow has been removed from this repository.
 ### 6. Check
 
 ```sh
-# 200, application/json, no redirect…
-curl -sI https://papertrail.renderg.host/client-metadata.json | head -n 12
-# …and naming itself as client_id
-curl -s https://papertrail.renderg.host/client-metadata.json | jq -r .client_id
-# Served by Vercel, with the security headers
-curl -sI https://papertrail.renderg.host/ | grep -iE '^(server|content-security-policy|strict-transport-security):'
-# Deep links serve the app
-curl -s https://papertrail.renderg.host/feed | grep -o '<div id="root">'
+npm run check:deployment -- https://papertrail.renderg.host/ --expect-vercel
 ```
 
-Then open https://papertrail.renderg.host/ and sign in with your handle.
+Every line should be a ✓. The same check runs automatically after each production deployment (next section). Then open https://papertrail.renderg.host/ and sign in with your handle.
+
+## Automatic checks after each deployment
+
+Every build stamps `index.html` with the commit it was built from (`<meta name="papertrail-build" content="<sha>">`, from `VERCEL_GIT_COMMIT_SHA`). After each push to `main`, the **Verify deployment** workflow waits up to ten minutes for `https://papertrail.renderg.host/` to serve that commit, then checks:
+
+- `client-metadata.json` returns 200 **without a redirect**, as `application/json`
+- its `client_id` is its own URL, its `redirect_uris` include the site, and it is a public DPoP client with the `atproto` scope
+- the site is **served by Vercel** (catches DNS still pointing elsewhere)
+- the app loads with its security headers (CSP, HSTS, nosniff, Referrer-Policy)
+- deep links serve the app, and missing assets are real 404s
+
+A failure shows on the commit in GitHub (**Actions → Verify deployment**) with the exact check that failed. Run it on demand with **Actions → Verify deployment → Run workflow** (it then checks whatever is live, e.g. after an Instant Rollback), or locally with the command above.
+
+- It is triggered by the push rather than by Vercel's deployment events, so it doesn't depend on which events the Vercel GitHub integration sends.
+- A newer push cancels the previous run, because Vercel cancels the older build too.
+- It checks the custom domain rather than the deployment's own URL, because Vercel Deployment Protection puts a login in front of deployment URLs. If the domain ever changes, update `PRODUCTION_URL` in the workflow.
 
 ## Day to day
 
@@ -134,7 +146,10 @@ Use `127.0.0.1`, not `localhost`: atproto's loopback OAuth client redirects ther
 | Sign-in screen: "Sign-in works at https://… — you're on …" | The page is open on a URL its build doesn't describe, e.g. a deployment's unique URL | Use the linked URL |
 | Production still describes `at-papertrail.vercel.app` after adding the domain | The production build predates the domain | Redeploy production (setup step 4) |
 | Sign-in on a **preview** fails with `invalid_client_metadata` | Deployment Protection blocks the PDS (401) | Expected; see [Preview deployments](#preview-deployments) |
-| Sign-in on **production** fails with `invalid_client_metadata` | The PDS can't fetch the metadata | Run the curl checks from a server; check the domain isn't proxied or protected |
+| Sign-in on **production** fails with `invalid_client_metadata` | The PDS can't fetch the metadata | `npm run check:deployment -- https://papertrail.renderg.host/`; check the domain isn't proxied or protected |
+| **Verify deployment** fails: "serves the expected build — still serving …" | The commit's production deployment failed, was cancelled, or took over ten minutes | Vercel → **Deployments**: open that commit's build log; once it's live, re-run the workflow |
+| **Verify deployment** fails: "served by Vercel — server is …" | DNS for the domain doesn't point at Vercel yet | Setup step 3 |
+| **Verify deployment** fails: "client_id is its own URL" | The production build describes a different URL (built before the domain was added, or a `VITE_SITE_URL` mismatch) | Redeploy production; check `VITE_SITE_URL` (Production) |
 | Vercel build fails: "No site URL: client-metadata.json was not generated" | System environment variables aren't exposed to the build | Settings → Environment Variables → enable *Automatically expose System Environment Variables*, then redeploy |
 | Domain stuck on *Invalid Configuration* | DNS still points at GitHub, or Cloudflare proxies it | Setup step 3 |
 | Browser console: `Refused to load …` | The Content-Security-Policy blocked something new | Widen the named directive in `vercel.json` |

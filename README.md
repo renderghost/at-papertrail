@@ -66,6 +66,7 @@ Papertrail deploys on Vercel: every pull request gets a preview, and `main` goes
 - No environment variables are required. Each build works out its own URL from Vercel's system variables (production: the project's production domain; previews: their own URL), and generates the OAuth client document (`client-metadata.json`) for it.
 - `vercel.json` routes the app's pages, adds the security headers (including a Content-Security-Policy) and sets caching.
 - GitHub Actions (`.github/workflows/ci.yml`) typechecks, tests and builds every pull request.
+- After each push to `main`, `.github/workflows/verify-deployment.yml` waits for Vercel to serve that commit, then checks the live site can sign people in. Run the same check yourself with `npm run check:deployment -- https://papertrail.renderg.host/`.
 
 ## Future scope
 
