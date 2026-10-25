@@ -52,23 +52,20 @@ npm install
 npm run dev        # http://127.0.0.1:5173 (sign-in uses atproto's loopback client; no setup needed)
 npm test           # unit tests for the domain logic
 npm run build      # typecheck + production build into dist/
+npm run preview    # serve the build at http://127.0.0.1:4173
 ```
 
 Use `127.0.0.1`, not `localhost`. atproto's loopback OAuth client redirects there, and OAuth state is per-origin, so on `localhost` the sign-in screen explains this rather than offering a flow that can't finish.
 
 Optional: put `VITE_GOOGLE_BOOKS_API_KEY=…` in `.env.local` for a higher Google Books quota. Search works without it.
 
-## Deploying (GitHub Pages)
+## Deploying (Vercel)
 
-Full step-by-step guide, including custom domains, rollback and troubleshooting: **[docs/deployment.md](docs/deployment.md)**.
+Papertrail deploys on Vercel: every pull request gets a preview, and `main` goes to production at `https://papertrail.renderg.host/`. Full guide, covering first-time setup, DNS, previews, environment variables, security headers and troubleshooting: **[docs/deployment.md](docs/deployment.md)**.
 
-First deployment, in short:
-
-1. At **Settings → Pages**, set **Source** to **GitHub Actions** (not "Deploy from a branch") and keep the custom domain `papertrail.renderg.host`.
-2. Merge to `main`. The workflow tests, builds and publishes to `https://papertrail.renderg.host/`, then a `verify` job checks the live site can sign you in.
-3. Open the site, sign in with your handle, and check your BookHive books appear.
-
-The site URL lives in the committed `.env` as `VITE_SITE_URL`. The OAuth client document (`client-metadata.json`) and the base path are generated from it, and the build fails without it. To preview the production build locally: `npm run build && npm run preview`, then open `http://127.0.0.1:4173/`.
+- No environment variables are required. Each build works out its own URL from Vercel's system variables (production: the project's production domain; previews: their own URL), and generates the OAuth client document (`client-metadata.json`) for it.
+- `vercel.json` routes the app's pages, adds the security headers (including a Content-Security-Policy) and sets caching.
+- GitHub Actions (`.github/workflows/ci.yml`) typechecks, tests and builds every pull request.
 
 ## Future scope
 

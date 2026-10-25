@@ -1,110 +1,141 @@
-# Deploying Papertrail to GitHub Pages
+# Deploying Papertrail on Vercel
 
-Papertrail is a static site. GitHub Actions builds it and publishes it to GitHub Pages on the custom domain:
+Papertrail is a static site: Vercel builds it from this repository and serves it at
 
 **https://papertrail.renderg.host/**
 
-There is no server and nothing to configure at runtime. Two settings must agree:
+alongside the other `renderg.host` apps in the `renderghost` Vercel team. Nothing runs on a server and nothing needs configuring at runtime.
 
-| Where | Value |
+## How it fits together
+
+| Piece | What it does |
 | --- | --- |
-| `VITE_SITE_URL` in the committed [`.env`](../.env) | `https://papertrail.renderg.host/` |
-| **Settings → Pages → Custom domain** (also recorded in [`CNAME`](../CNAME)) | `papertrail.renderg.host` |
+| [`vercel.json`](../vercel.json) | Vite build into `dist/`; routes unknown paths to `index.html` (the app's own router takes over) while missing `/assets/*` files stay real 404s; security headers, including a Content-Security-Policy; caching. |
+| [`src/lib/siteUrl.ts`](../src/lib/siteUrl.ts) | Decides which URL each build describes (below). |
+| `client-metadata.json` | Generated per build from that URL. A PDS fetches it during sign-in and only proceeds if its `client_id` is exactly the URL it was fetched from. |
+| [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Typecheck, tests and a production build on every pull request and push to `main`. |
 
-The build generates the OAuth client document (`client-metadata.json`) and the site's base path from `VITE_SITE_URL`. A PDS only lets you sign in if it can fetch that document at exactly the URL it names as its `client_id`, with no redirect. If the two settings disagree, the site may load but nobody can sign in.
+### Which URL a build describes
 
-## How the pipeline works
-
-[`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) has three jobs:
-
-| Job | Runs on | Does |
+| Build | Site URL | So sign-in works on |
 | --- | --- | --- |
-| `build` | every pull request, every push to `main`, manual runs | `npm ci`, `npm test`, `npm run build`. On `main` only, uploads `dist/` as the Pages artifact. |
-| `deploy` | pushes to `main` and manual runs on `main` | Publishes the artifact to the `github-pages` environment. |
-| `verify` | after every deploy | Checks the live site: `client-metadata.json` returns 200 with no redirect and names its own URL as `client_id`, and a deep link serves the app. |
+| Production (`main`) | `https://$VERCEL_PROJECT_PRODUCTION_URL`: the custom domain once added, else `<project>.vercel.app` | `papertrail.renderg.host` |
+| Preview (pull requests, branches) | `https://$VERCEL_BRANCH_URL`, the branch URL Vercel's PR comment links (else the deployment's own `$VERCEL_URL`) | the branch URL (see [Previews](#preview-deployments)) |
+| `VITE_SITE_URL` set | that value; previews still use their own URL | the URL you set |
+| Local `npm run build` | none: no `client-metadata.json`, with a warning | `127.0.0.1` only (atproto's loopback client) |
 
-Pull requests never deploy. Deploys queue one at a time and are never cancelled half-way. A superseded pull-request build is cancelled.
+If a page is opened somewhere its build doesn't describe, such as a production deployment's unique `at-papertrail-<hash>-renderghost.vercel.app` URL, the sign-in screen says where sign-in works and links there. It doesn't start a sign-in that the PDS would reject.
 
-## First deployment (one time)
+On Vercel, a build with no site URL at all fails rather than shipping a sign-in that can't work.
 
-Do these in the GitHub web UI with admin access to `renderghost/at-papertrail`.
+## First-time setup
 
-1. **Switch Pages to GitHub Actions.** This is the step that matters most.
-   - Open **https://github.com/renderghost/at-papertrail/settings/pages**.
-   - Under **Build and deployment** → **Source**, choose **GitHub Actions**.
-   - While it says **Deploy from a branch**, GitHub runs its own "pages build and deployment" job on every push. That job publishes the raw repository (the README) and overwrites the app.
-2. **Check the custom domain**, on the same page.
-   - **Custom domain** must read `papertrail.renderg.host` with a green "DNS check successful".
-   - Tick **Enforce HTTPS**. If the box is greyed out, the certificate is still being issued; wait and come back.
-   - DNS needs a `CNAME` record for `papertrail` in the `renderg.host` zone pointing to `renderghost.github.io`. It's already working if the DNS check is green.
-3. **Merge the pull request into `main`.** The push to `main` starts the workflow.
-4. **Watch the run.** Open **https://github.com/renderghost/at-papertrail/actions/workflows/deploy.yml** and click the newest run. `build`, `deploy` and `verify` should all go green within a few minutes. There should be **no** new "pages build and deployment" run; if there is, go back to step 1.
-5. **Check the environment is limited to `main`.** Open **https://github.com/renderghost/at-papertrail/settings/environments** → **github-pages** → **Deployment branches and tags**. It should list only `main`; GitHub normally sets this up on the first Actions deploy.
-6. **Sign in.** Open https://papertrail.renderg.host/, enter your handle, approve access on your PDS, and check your BookHive books appear in the Library.
+About ten minutes, by the owner of the `renderghost` Vercel team and the `renderg.host` Cloudflare zone.
 
-### Checking it by hand
+### 1. Create the Vercel project
 
-The `verify` job runs these checks for you. To repeat them from a terminal:
+1. Open **https://vercel.com/new** and choose the **renderghost** team.
+2. **Import Git Repository** → `renderghost/at-papertrail`.
+3. Project name `at-papertrail`. The framework preset (Vite), build and output settings come from `vercel.json`, so leave them alone.
+4. **No environment variables are needed.** Leave *Automatically expose System Environment Variables* on (the default), because the build reads `VERCEL_ENV`, `VERCEL_BRANCH_URL`, `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL`. Node.js 24 comes from `engines` in `package.json`.
+5. **Deploy.** The first production build describes `at-papertrail.vercel.app` until the domain is added.
+
+### 2. Add the domain
+
+1. Project → **Settings → Domains** → **Add** → `papertrail.renderg.host` → assign it to **Production**.
+2. Vercel shows *Invalid Configuration* and the `CNAME` target it wants. That's expected until step 3.
+
+### 3. Point DNS at Vercel (Cloudflare)
+
+1. Cloudflare → **renderg.host** → **DNS → Records**.
+2. Edit the existing `papertrail` record, which currently points to `renderghost.github.io`:
+   - **Type** `CNAME`, **Name** `papertrail`, **Target**: the value Vercel shows under Domains, a project-specific host like `db58eeaea4aee7b5.vercel-dns-017.com` (the generic `cname.vercel-dns.com` also works)
+   - **Proxy status: DNS only** (grey cloud), like the other `renderg.host` apps. Vercel issues the HTTPS certificate itself.
+3. Back in Vercel → **Domains**, wait for *Valid Configuration* and the certificate. Usually a minute or two.
+
+### 4. Redeploy production
+
+`VERCEL_PROJECT_PRODUCTION_URL` is read **at build time**. Production builds made before the domain was added still describe `at-papertrail.vercel.app`.
+
+Vercel → **Deployments** → the latest Production deployment → **⋯ → Redeploy**. Or merge anything to `main`.
+
+### 5. Retire GitHub Pages
+
+GitHub → **https://github.com/renderghost/at-papertrail/settings/pages**:
+
+- remove `papertrail.renderg.host` under **Custom domain**
+- set **Source** to **GitHub Actions** with no workflow, or unpublish the site
+
+The old Pages deploy workflow has been removed from this repository.
+
+### 6. Check
 
 ```sh
-# Must be HTTP 200 (not 301/302) with application/json …
-curl -sI https://papertrail.renderg.host/client-metadata.json | head -n 5
-
-# … and client_id must be exactly this URL.
+# 200, application/json, no redirect…
+curl -sI https://papertrail.renderg.host/client-metadata.json | head -n 12
+# …and naming itself as client_id
 curl -s https://papertrail.renderg.host/client-metadata.json | jq -r .client_id
-
-# The app, not the README: should print the app's root element.
-curl -s https://papertrail.renderg.host/ | grep -o '<div id="root">'
-
-# Deep links: GitHub Pages answers 404 but serves the app (404.html), which then routes.
+# Served by Vercel, with the security headers
+curl -sI https://papertrail.renderg.host/ | grep -iE '^(server|content-security-policy|strict-transport-security):'
+# Deep links serve the app
 curl -s https://papertrail.renderg.host/feed | grep -o '<div id="root">'
 ```
 
-## Deploying changes
+Then open https://papertrail.renderg.host/ and sign in with your handle.
 
-- **Normally:** merge a pull request into `main`. Every push to `main` deploys.
-- **Re-deploy without a code change:** **Actions** → **Build and deploy** → **Run workflow**, choose branch **`main`**, then **Run workflow**. Runs started from another branch only build, because the `github-pages` environment accepts `main` alone.
-- **Before merging:** each pull request runs the same tests and build, so a red check means the deploy would fail too.
+## Day to day
 
-## Rolling back
+- **Pull request:** Vercel builds a preview and comments with its URL; CI runs the tests and a production build.
+- **Merge to `main`:** Vercel deploys production.
+- **Roll back:** Vercel → **Deployments** → a previous Production deployment → **⋯ → Instant Rollback**. No rebuild needed.
 
-Revert the change on `main` (`git revert <commit>` and push, or **Revert** on the merged pull request in GitHub). The push deploys the previous state.
+## Preview deployments
 
-Re-running an old workflow run isn't a reliable rollback: the Pages artifact it uploaded expires after a day.
+New Vercel projects use **Standard Deployment Protection**: previews require a Vercel login. You can browse them, but your PDS fetches `client-metadata.json` from its own servers without that login. It gets a 401, so **sign-in fails on previews** with *"Your PDS couldn't load Papertrail's sign-in details (invalid_client_metadata…)"*. Test sign-in locally or in production; see #11 for the options.
 
-## Previewing the production build locally
+## Environment variables
+
+None are required. Optional, in Vercel → **Settings → Environment Variables**:
+
+| Variable | Scope | Purpose |
+| --- | --- | --- |
+| `VITE_SITE_URL` | **Production only** | Pins the production URL, e.g. if more custom domains are added and the shortest isn't the canonical one. Previews ignore it. |
+| `VITE_GOOGLE_BOOKS_API_KEY` | All | Higher Google Books quota. It's visible in the browser bundle, so restrict it to the site's domains in Google Cloud. |
+
+Locally, put them in `.env.local` (see [`.env.example`](../.env.example)).
+
+## Security headers
+
+Set in `vercel.json` for every response:
+
+- **Content-Security-Policy:**
+  - scripts, styles and fonts from the site itself only
+  - images and network requests to any `https:` origin (people's PDSes, covers and the directories live anywhere)
+  - no plugins, no framing
+- **Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy**
+
+If a new feature loads something the policy blocks, the browser console shows a `Refused to …` error. Widen only the directive it names.
+
+## Local development
 
 ```sh
-npm run build
-npm run preview    # http://127.0.0.1:4173/
+npm install
+npm run dev        # http://127.0.0.1:5173
+npm run build      # warns "No site URL" unless VITE_SITE_URL is set; fine locally
+npm run preview    # http://127.0.0.1:4173
 ```
 
-This serves `dist/` exactly as GitHub Pages will. Sign-in works here too: on `127.0.0.1` the app uses atproto's loopback OAuth client instead of `client-metadata.json`. Use `127.0.0.1`, not `localhost`.
-
-## Changing the domain
-
-The OAuth client id is derived from the site URL, so changing domain changes the client. Do all of this in one go:
-
-1. **DNS:** add a `CNAME` record for the new host pointing to `renderghost.github.io`.
-2. **Pages:** at https://github.com/renderghost/at-papertrail/settings/pages, enter the new domain under **Custom domain**, click **Save**, wait for the DNS check, then tick **Enforce HTTPS**.
-3. **`.env`:** set `VITE_SITE_URL` to the new URL with a trailing slash (e.g. `https://reading.example.com/`), then commit and push to `main`.
-   - To drop the custom domain, clear it in Settings, delete `CNAME`, and set `VITE_SITE_URL=https://renderghost.github.io/at-papertrail/`. The build then serves under `/at-papertrail/` automatically.
-4. **Check:** the `verify` job, or the curl commands above with the new URL, must pass.
-
-After a domain change, people who were signed in must sign in again. Their books on their PDS are unaffected.
+Use `127.0.0.1`, not `localhost`: atproto's loopback OAuth client redirects there, so local sign-in needs no metadata file and no deployment.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| The site shows the README, or the app flickers back to the README after a deploy | Pages source is still "Deploy from a branch", so GitHub's branch build overwrites the Actions deploy | Step 1 of [First deployment](#first-deployment-one-time), then re-run the workflow |
-| The page loads blank, and the browser console shows 404s for `/assets/…` | `VITE_SITE_URL` doesn't match the domain being served, so the asset paths are wrong | Make `.env` match **Settings → Pages → Custom domain** |
-| `deploy` fails with "Ensure GitHub Pages has been enabled" or a 404 from the Pages API | Pages is off | Step 1 |
-| `deploy` fails with "Branch … is not allowed to deploy to github-pages" | The run wasn't on `main` | Merge to `main`, or run the workflow with branch `main` |
-| `build` fails with "No public site URL is configured" | `VITE_SITE_URL` is missing or empty in `.env` | Restore it |
-| `verify` fails on client metadata with HTTP 301/302 | The site is being redirected, e.g. the custom domain changed or HTTPS isn't enforced yet | Set `VITE_SITE_URL` to the final URL ([Changing the domain](#changing-the-domain)) |
-| `verify` fails with a TLS or connection error | The custom domain's certificate isn't issued yet, or DNS is wrong | Wait for **Enforce HTTPS** to become available, check the DNS record, re-run `verify` |
-| Sign-in fails with "Papertrail's sign-in is misconfigured" | The PDS rejected the client metadata, e.g. its `client_id` doesn't match the URL it was fetched from | Run the curl checks |
-| Sign-in on your machine says to use 127.0.0.1 | You opened `localhost` | Open `http://127.0.0.1:5173/` (dev) or `http://127.0.0.1:4173/` (preview) |
-| A link to a page opens blank | `404.html` wasn't published | Check `dist/404.html` exists after `npm run build`; the build creates it |
-| `verify` fails straight after the first deploy | The Pages CDN was still warming up; the job retries for about two minutes | Re-run the `verify` job |
+| Sign-in screen: "Sign-in works at https://… — you're on …" | The page is open on a URL its build doesn't describe, e.g. a deployment's unique URL | Use the linked URL |
+| Production still describes `at-papertrail.vercel.app` after adding the domain | The production build predates the domain | Redeploy production (setup step 4) |
+| Sign-in on a **preview** fails with `invalid_client_metadata` | Deployment Protection blocks the PDS (401) | Expected; see [Preview deployments](#preview-deployments) |
+| Sign-in on **production** fails with `invalid_client_metadata` | The PDS can't fetch the metadata | Run the curl checks from a server; check the domain isn't proxied or protected |
+| Vercel build fails: "No site URL: client-metadata.json was not generated" | System environment variables aren't exposed to the build | Settings → Environment Variables → enable *Automatically expose System Environment Variables*, then redeploy |
+| Domain stuck on *Invalid Configuration* | DNS still points at GitHub, or Cloudflare proxies it | Setup step 3 |
+| Browser console: `Refused to load …` | The Content-Security-Policy blocked something new | Widen the named directive in `vercel.json` |
+| A page loads blank after a deploy, with a 404 for `/assets/…` | A tab open from before the deploy requested an old asset | Reload; hashed assets are replaced on every deploy |

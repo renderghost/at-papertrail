@@ -1,0 +1,39 @@
+name: CI
+
+# Typecheck, test and build every pull request and push to main. Vercel builds
+# and deploys on its own; this keeps a red build out of main. Production
+# deployments are checked separately by verify-deployment.yml.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Build as Vercel production would, so the OAuth metadata step runs too.
+      - run: npm run build
+        env:
+          VITE_SITE_URL: https://papertrail.renderg.host/
+      - name: Client metadata describes the site
+        run: |
+          test -f dist/client-metadata.json
+          test "$(jq -r .client_id dist/client-metadata.json)" = "https://papertrail.renderg.host/client-metadata.json"
+          test "$(jq -r '.redirect_uris[0]' dist/client-metadata.json)" = "https://papertrail.renderg.host/"
+          echo "OK"

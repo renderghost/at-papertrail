@@ -5,6 +5,23 @@ import { checkIdentifier } from '../lib/identity'
 
 const SPINES = ['#c8402a', '#e3a63b', '#f6f1e7', '#24543e', '#4b2a4f', '#c9dde3', '#c8402a', '#f6f1e7', '#e3a63b', '#24543e', '#7a3b2e', '#c9dde3']
 
+/** Turns http(s) URLs in a notice (e.g. "Sign-in works at https://…") into links. */
+function Linkified({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(https?:\/\/[^\s]+[^\s.,;:!?)])/g).map((part, i) =>
+        i % 2 === 1 ? (
+          <a key={i} href={part}>
+            {part}
+          </a>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  )
+}
+
 export function Login({ notice }: { notice?: string }) {
   const { startOAuthSignIn } = useAuth()
   const [identifier, setIdentifier] = useState('')
@@ -50,7 +67,7 @@ export function Login({ notice }: { notice?: string }) {
         </p>
         {notice && (
           <div className="notice" role="status">
-            {notice}
+            <Linkified text={notice} />
           </div>
         )}
         <form onSubmit={submit} noValidate className="stack">
