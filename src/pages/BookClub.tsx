@@ -10,6 +10,7 @@ import { displayAuthors } from '../lib/bookhive/authors'
 import { displayName, formatDate, plural, truncate } from '../lib/format'
 import { useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
+import { bookPath } from '../lib/paths'
 
 /** A Bluesky compose window, pre-filled to start the conversation. */
 function composeUrl(book: ClubBook): string {
@@ -66,12 +67,12 @@ function ClubCard({ book, scanning }: { book: ClubBook; scanning: boolean }) {
   const total = book.reading.length + book.haveRead.length
   return (
     <section className="club-book">
-      <Link to={`/book/${v.hiveId}`} state={{ entry: book.mine }}>
+      <Link to={bookPath(v.hiveId)} state={{ entry: book.mine }}>
         <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={book.mine} />
       </Link>
       <div style={{ minWidth: 0 }}>
         <h2>
-          <Link to={`/book/${v.hiveId}`} state={{ entry: book.mine }} style={{ textDecoration: 'none' }}>
+          <Link to={bookPath(v.hiveId)} state={{ entry: book.mine }} style={{ textDecoration: 'none' }}>
             {v.title}
           </Link>
         </h2>

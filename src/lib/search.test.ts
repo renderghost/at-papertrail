@@ -9,6 +9,8 @@ import {
   mergeCandidates,
   newBookRecord,
   pickIsbns,
+  withoutCatalogued,
+  type Candidate,
 } from './search'
 
 const NOW = '2025-06-01T12:00:00.000Z'
@@ -109,5 +111,31 @@ describe('newBookRecord', () => {
     expect(record.hiveBookUri).toBeUndefined()
     expect(record.startedAt).toBeUndefined()
     expect(record.identifiers).toEqual({ hiveId, isbn13: '9780061251788' })
+  })
+})
+
+describe('withoutCatalogued', () => {
+  const candidate = (title: string, authors: string[], isbn13?: string): Candidate => ({
+    key: title,
+    title,
+    authors,
+    isbn13,
+    sources: ['openlibrary'],
+  })
+
+  it('drops results BookHive already returned, by ISBN or by title and author', () => {
+    const catalogued = [
+      { title: 'Piranesi', authors: 'Susanna Clarke', identifiers: { isbn13: '9781635575637' } },
+      { title: 'The Dispossessed', authors: 'Ursula K. Le Guin' },
+    ]
+    const left = withoutCatalogued(
+      [
+        candidate('Piranesi (special edition)', ['Susanna Clarke'], '9781635575637'),
+        candidate('The Dispossessed', ['Ursula K. Le Guin']),
+        candidate('The Lathe of Heaven', ['Ursula K. Le Guin']),
+      ],
+      catalogued,
+    )
+    expect(left.map((c) => c.title)).toEqual(['The Lathe of Heaven'])
   })
 })

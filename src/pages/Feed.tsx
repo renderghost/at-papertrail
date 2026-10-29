@@ -8,6 +8,7 @@ import { displayAuthors } from '../lib/bookhive/authors'
 import { buildFeed, FEED_FILTERS, matchesFilter, type FeedEvent, type FeedEventKind } from '../lib/feed'
 import { displayName, formatRelativeDay, truncate } from '../lib/format'
 import { useNetwork } from '../lib/network'
+import { bookPath } from '../lib/paths'
 
 const PAGE = 40
 
@@ -97,7 +98,7 @@ function FeedItem({ event }: { event: FeedEvent }) {
             {event.earlierRead ? 'read' : VERB[event.kind]}
           </span>
         </div>
-        <Link className="what" to={`/book/${v.hiveId}`} state={{ entry }}>
+        <Link className="what" to={bookPath(v.hiveId)} state={{ entry }}>
           {v.title}
         </Link>
         <div className="muted small">{displayAuthors(v.authors)}</div>
@@ -112,7 +113,7 @@ function FeedItem({ event }: { event: FeedEvent }) {
           {event.earlierRead ? ' · an earlier read' : ''}
         </div>
       </div>
-      <Link to={`/book/${v.hiveId}`} state={{ entry }} tabIndex={-1} aria-hidden="true">
+      <Link to={bookPath(v.hiveId)} state={{ entry }} tabIndex={-1} aria-hidden="true">
         <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
       </Link>
     </li>

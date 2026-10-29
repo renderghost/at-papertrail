@@ -117,6 +117,9 @@ export type CatalogBook = {
   publicationYear?: number
   publisher?: string
   authorBio?: string
+  /** Counts of 1- to 5-star ratings at the source (e.g. Goodreads). */
+  ratingsDistribution?: number[]
+  secondaryAuthors?: { name: string; role?: string }[]
 }
 
 export function blobCid(blob: BlobRef | undefined): string | null {

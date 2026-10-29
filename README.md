@@ -2,18 +2,19 @@
 
 A social reading client for [BookHive](https://bookhive.buzz), built on the AT Protocol. Log every book, see what the people you follow are reading, find who's reading the same books as you, and get your reading year **Covered**.
 
-Papertrail is a **pure front end**: a static site with no server and no database. You sign in with OAuth in the browser, and every write goes straight from your browser to your own PDS as a standard `buzz.bookhive.book` record. Anything you log here also appears on bookhive.buzz, and the reverse.
+Papertrail is a **front end with no database**: a static site plus one small, stateless relay function. You sign in with OAuth in the browser, and every write goes straight from your browser to your own PDS as a standard `buzz.bookhive.book` record. Anything you log here also appears on bookhive.buzz, and the reverse.
 
 ## What's in it
 
 | | |
 | --- | --- |
 | **Library** | Your shelves (reading, want to read, finished, abandoned). Edit status, dates, progress (pages or %), half-star ratings, reviews and ownership. Re-reading a finished book keeps the earlier read in its history, as BookHive does. |
-| **Add a book** | Searches Open Library and Google Books, then matches each result to BookHive's catalogue by `hiveId`. Matched books get BookHive's data and appear on bookhive.buzz. Unmatched ones still save, flagged. |
+| **Add a book** | Searches BookHive's own catalogue first, then Open Library and Google Books (duplicates dropped), matching each of those to BookHive by `hiveId`. Catalogued books appear on bookhive.buzz. Uncatalogued ones still save, flagged. |
+| **Book pages** | `/books/bk_…`, the same paths as bookhive.buzz. Catalogue details, series, the rating spread, your reading and re-reads, what people you follow thought (on BookHive and PopFeed, spoilers hidden), and every BookHive review and comment. Public: they work signed out. |
 | **Feed** | "@friend started / finished / reviewed / wants to read …" from everyone you follow on Bluesky. |
 | **Book club** | For each book you're reading: who you follow is reading it now, and who has read it before (their reviews are folded away to avoid spoilers). One tap opens a Bluesky post to start the conversation. |
 | **Covered** | Wrapped-style story cards for any year or month: books and pages, month-by-month chart, top genres, longest and shortest, fastest read, highest rated, most-read author, bookends. |
-| **Profiles** | Anyone's BookHive library, read-only. |
+| **Profiles** | Anyone's BookHive library at `/profile/:handle`, read-only and public. |
 
 ## How it works
 
@@ -22,7 +23,10 @@ Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book
    │
    ├──▶ public.api.bsky.app                 profiles, who you follow
    ├──▶ plc.directory → each follow's PDS    their buzz.bookhive.book records
+   ├──▶ each follow's PDS                    their social.popfeed.feed.review book reviews (read only)
+   ├──▶ relay1.us-east.bsky.network          which follows use BookHive or PopFeed at all
    ├──▶ @bookhive.buzz's PDS                 buzz.bookhive.catalogBook (rich book data, keyed by hiveId)
+   ├──▶ /api/bookhive/* (Vercel function) ─▶ bookhive.buzz's XRPC: search, reviews, comments (no CORS upstream)
    └──▶ Open Library, Google Books           search, plus details for books BookHive hasn't catalogued
 ```
 
@@ -37,7 +41,8 @@ Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book
 - **Edits are compare-and-swap** (`swapRecord`), so a change made in bookhive.buzz is never silently overwritten. Fields Papertrail doesn't know about are preserved.
 - **hiveIds** are reproduced exactly as BookHive generates them (`src/lib/bookhive/hiveId.ts`). This is pinned to `ohash@1` and verified against a real production id.
 - **Status and date rules** mirror BookHive's `core/bookLifecycle.ts` (`src/lib/bookhive/lifecycle.ts`).
-- **Your network** is scanned in the browser and cached in memory for 15 minutes (`src/lib/network.ts`).
+- **Your network** is scanned in the browser (`src/lib/network.ts`): only follows the relay's index lists as BookHive or PopFeed users, a copy of the last scan in IndexedDB so a reload is instant, and a repo is re-read only when its latest commit has changed.
+- **The BookHive relay** (`api/bookhive/[method].ts`) forwards an allowlist of BookHive's public, read-only queries. It sends no cookies or credentials upstream, and Vercel's CDN caches each answer.
 
 ### Good to know
 
@@ -49,7 +54,7 @@ Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book
 
 ```sh
 npm install
-npm run dev        # http://127.0.0.1:5173 (sign-in uses atproto's loopback client; no setup needed)
+npm run dev        # http://127.0.0.1:5173, with /api/bookhive/* served too (sign-in uses atproto's loopback client)
 npm test           # unit tests for the domain logic
 npm run build      # typecheck + production build into dist/
 npm run preview    # serve the build at http://127.0.0.1:4173
@@ -68,13 +73,9 @@ Papertrail deploys on Vercel: every pull request gets a preview, and `main` goes
 - GitHub Actions (`.github/workflows/ci.yml`) typechecks, tests and builds every pull request.
 - After each push to `main`, `.github/workflows/verify-deployment.yml` waits for Vercel to serve that commit, then checks the live site can sign people in. Run the same check yourself with `npm run check:deployment -- https://papertrail.renderg.host/`.
 
-## Future scope
+## Roadmap
 
-- [#1](https://github.com/renderghost/at-papertrail/issues/1) E-reader sync for the Xteink X4 (KOReader Sync). In the meantime, BookHive's own KOSync server writes progress Papertrail already shows.
-- [#2](https://github.com/renderghost/at-papertrail/issues/2) Covered: reading goals for the months and years ahead
-- [#3](https://github.com/renderghost/at-papertrail/issues/3) Search BookHive's catalogue directly once PDS proxying (or CORS) is available
-- [#4](https://github.com/renderghost/at-papertrail/issues/4) Feed: accurate dates for reviews, ratings and abandoned books
-- [#5](https://github.com/renderghost/at-papertrail/issues/5) Faster network loading for large follow graphs
+The roadmap lives in GitHub issues: start at [#15](https://github.com/renderghost/at-papertrail/issues/15), which links an epic per theme (pages and lists, personal reading, library, social, discovery, e-reader, integrations, platform).
 
 ## Credits
 

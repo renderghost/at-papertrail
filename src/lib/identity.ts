@@ -80,6 +80,15 @@ export async function resolveDidDocument(did: string, signal?: AbortSignal): Pro
 
 const pdsCache = new Map<string, Promise<string>>()
 
+/** Seeds the PDS cache, e.g. from a stored copy; `forgetPds` drops it if it turns out stale. */
+export function rememberPds(did: string, pds: string): void {
+  if (!pdsCache.has(did)) pdsCache.set(did, Promise.resolve(pds))
+}
+
+export function forgetPds(did: string): void {
+  pdsCache.delete(did)
+}
+
 /** The PDS hosting a DID's repo, e.g. "https://morel.us-east.host.bsky.network". Cached per page load. */
 export function resolvePds(did: string): Promise<string> {
   let cached = pdsCache.get(did)

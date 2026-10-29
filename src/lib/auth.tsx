@@ -176,3 +176,9 @@ export function useSession(): { did: string; session: OAuthSession } {
   if (state.status !== 'signed-in') throw new Error('useSession requires a signed-in session')
   return { did: state.session.did, session: state.session }
 }
+
+/** The signed-in user, or null on public pages viewed signed out. */
+export function useMaybeSession(): { did: string; session: OAuthSession } | null {
+  const { state } = useAuth()
+  return state.status === 'signed-in' ? { did: state.session.did, session: state.session } : null
+}

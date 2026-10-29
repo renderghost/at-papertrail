@@ -81,6 +81,12 @@ export async function getRecord<T>(
   }
 }
 
+/** The repo's latest revision; it changes whenever any record in the repo does. */
+export async function getLatestCommit(pds: string, did: string, signal?: AbortSignal): Promise<{ cid: string; rev: string }> {
+  const params = new URLSearchParams({ did })
+  return getJson(`${pds}/xrpc/com.atproto.sync.getLatestCommit?${params}`, signal)
+}
+
 export function blobUrl(pds: string, did: string, cid: string): string {
   const params = new URLSearchParams({ did, cid })
   return `${pds}/xrpc/com.atproto.sync.getBlob?${params}`

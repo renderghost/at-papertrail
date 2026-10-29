@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
-import { useAuth, useSession } from '../lib/auth'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useAuth, useMaybeSession } from '../lib/auth'
 import { useProfile } from '../lib/hooks'
+import { loginPath, profilePath } from '../lib/paths'
 import { Avatar } from './bits'
 import { Icon, type IconName } from './Icon'
 
@@ -52,41 +53,52 @@ function ThemeToggle() {
 }
 
 export function Layout() {
-  const { did } = useSession()
+  const me = useMaybeSession()
   const { signOut } = useAuth()
-  const profile = useProfile(did)
+  const profile = useProfile(me?.did)
+  const location = useLocation()
 
   return (
     <>
-      <header className="masthead">
+      <header className={`masthead${me ? '' : ' masthead-public'}`}>
         <div className="masthead-inner">
           <Link to="/" className="wordmark">
             Papertrail<span className="wordmark-dot">.</span>
           </Link>
-          <nav className="nav" aria-label="Main">
-            {NAV.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end}>
-                <span className="nav-icon">
-                  <Icon name={item.icon} size={22} />
-                </span>
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          {me && (
+            <nav className="nav" aria-label="Main">
+              {NAV.map((item) => (
+                <NavLink key={item.to} to={item.to} end={item.end}>
+                  <span className="nav-icon">
+                    <Icon name={item.icon} size={22} />
+                  </span>
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
           <div className="masthead-tools">
-            <Link to="/add" className="btn btn-accent btn-sm" title="Add a book">
-              <Icon name="plus" size={16} />
-              <span>Add</span>
-            </Link>
+            {me ? (
+              <Link to="/add" className="btn btn-accent btn-sm" title="Add a book">
+                <Icon name="plus" size={16} />
+                <span>Add</span>
+              </Link>
+            ) : (
+              <Link to={loginPath(location.pathname + location.search)} className="btn btn-primary btn-sm">
+                Sign in
+              </Link>
+            )}
             <ThemeToggle />
             {profile.data && (
-              <Link to={`/profile/${profile.data.handle}`} title={`@${profile.data.handle}`}>
+              <Link to={profilePath(profile.data.handle)} title={`@${profile.data.handle}`}>
                 <Avatar profile={profile.data} size={32} />
               </Link>
             )}
-            <button className="icon-btn" onClick={() => void signOut()} title="Sign out">
-              <Icon name="logout" label="Sign out" />
-            </button>
+            {me && (
+              <button className="icon-btn" onClick={() => void signOut()} title="Sign out">
+                <Icon name="logout" label="Sign out" />
+              </button>
+            )}
           </div>
         </div>
       </header>

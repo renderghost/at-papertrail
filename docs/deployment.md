@@ -4,7 +4,7 @@ Papertrail is a static site: Vercel builds it from this repository and serves it
 
 **https://papertrail.renderg.host/**
 
-alongside the other `renderg.host` apps in the `renderghost` Vercel team. Nothing runs on a server and nothing needs configuring at runtime.
+alongside the other `renderg.host` apps in the `renderghost` Vercel team. It's a static site plus one stateless Vercel function (the BookHive relay, below). There's no database, and nothing needs configuring at runtime.
 
 ## How it fits together
 
@@ -12,6 +12,7 @@ alongside the other `renderg.host` apps in the `renderghost` Vercel team. Nothin
 | --- | --- |
 | [`vercel.json`](../vercel.json) | Vite build into `dist/`; routes unknown paths to `index.html` (the app's own router takes over) while missing `/assets/*` files stay real 404s; security headers, including a Content-Security-Policy; caching. |
 | [`src/lib/siteUrl.ts`](../src/lib/siteUrl.ts) | Decides which URL each build describes (below). |
+| [`api/bookhive/[method].ts`](../api/bookhive/%5Bmethod%5D.ts) | The BookHive relay: a Vercel function at `/api/bookhive/:method` ([below](#the-bookhive-relay-function)). |
 | `client-metadata.json` | Generated per build from that URL. A PDS fetches it during sign-in and only proceeds if its `client_id` is exactly the URL it was fetched from. |
 | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Typecheck, tests and a production build on every pull request and push to `main`. |
 | [`.github/workflows/verify-deployment.yml`](../.github/workflows/verify-deployment.yml) | After every push to `main`, waits for the domain to serve that commit, then runs [`scripts/check-deployment.mjs`](../scripts/check-deployment.mjs) against it ([below](#automatic-checks-after-each-deployment)). |
@@ -88,12 +89,25 @@ Every build stamps `index.html` with the commit it was built from (`<meta name="
 - the site is **served by Vercel** (catches DNS still pointing elsewhere)
 - the app loads with its security headers (CSP, HSTS, nosniff, Referrer-Policy)
 - deep links serve the app, and missing assets are real 404s
+- the BookHive relay function answers
 
 A failure shows on the commit in GitHub (**Actions → Verify deployment**) with the exact check that failed. Run it on demand with **Actions → Verify deployment → Run workflow** (it then checks whatever is live, e.g. after an Instant Rollback), or locally with the command above.
 
 - It is triggered by the push rather than by Vercel's deployment events, so it doesn't depend on which events the Vercel GitHub integration sends.
 - A newer push cancels the previous run, because Vercel cancels the older build too.
 - It checks the custom domain rather than the deployment's own URL, because Vercel Deployment Protection puts a login in front of deployment URLs. If the domain ever changes, update `PRODUCTION_URL` in the workflow.
+
+## The BookHive relay function
+
+bookhive.buzz's XRPC API sends no CORS headers, so the browser can't call it from another site. `GET /api/bookhive/:method` relays an **allowlist** of BookHive's public, read-only queries: `searchBooks`, `getBook`, `getBookIdentifiers`, `getAuthorBooks`, `getExplore`, `listGenres`, `getLanguages`, `getProfile`, `getReadingStats`, `getUserLists` and `getList`.
+
+- **Anonymous:** no cookies, credentials or visitor headers go upstream. Only the listed parameters pass, and the upstream host is fixed.
+- **Cached by Vercel's CDN** per method, from 5 minutes (profiles, lists) to a day (identifiers, genres). Repeat traffic doesn't reach BookHive. Errors: XRPC 4xx answers pass through with a short cache; upstream failures become an uncached `502`.
+- **Self-contained:** the file has no local imports, so Vercel compiles it on its own. `npm run dev` and `npm run preview` serve the same handler (`vite.config.ts`), and `src/server/bookhiveProxy.test.ts` tests it.
+- `vercel.json`'s app rewrite skips `/api/` so the function isn't shadowed by `index.html`. Vercel routes `/api/bookhive/x` to the file as `/api/bookhive/[method]?method=x`; the handler accepts both forms.
+- **Retire it** once BookHive allows CORS (#42) or adds its `#bookhive_appview` service (#43).
+
+The deployment check asks for an unknown method and expects the function's own `404 MethodNotSupported`, so it proves the function is deployed without depending on bookhive.buzz.
 
 ## Day to day
 
@@ -152,5 +166,7 @@ Use `127.0.0.1`, not `localhost`: atproto's loopback OAuth client redirects ther
 | **Verify deployment** fails: "client_id is its own URL" | The production build describes a different URL (built before the domain was added, or a `VITE_SITE_URL` mismatch) | Redeploy production; check `VITE_SITE_URL` (Production) |
 | Vercel build fails: "No site URL: client-metadata.json was not generated" | System environment variables aren't exposed to the build | Settings → Environment Variables → enable *Automatically expose System Environment Variables*, then redeploy |
 | Domain stuck on *Invalid Configuration* | DNS still points at GitHub, or Cloudflare proxies it | Setup step 3 |
+| **Verify deployment** fails: "the BookHive relay function answers — HTTP 200, not the function" | `index.html` answered `/api/…`: the app rewrite in `vercel.json` lost its `api/` exclusion | Restore `"source": "/((?!assets/\|api/).*)"` |
+| Book pages show no BookHive reviews; `/api/bookhive/getBook` returns `502` | bookhive.buzz is down or slow | Nothing to fix here; the page falls back to catalogue records |
 | Browser console: `Refused to load …` | The Content-Security-Policy blocked something new | Widen the named directive in `vercel.json` |
 | A page loads blank after a deploy, with a 404 for `/assets/…` | A tab open from before the deploy requested an old asset | Reload; hashed assets are replaced on every deploy |

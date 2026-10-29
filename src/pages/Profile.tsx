@@ -2,21 +2,22 @@ import { Link, useParams } from 'react-router-dom'
 import { Avatar, ErrorNote, Loading } from '../components/bits'
 import { Icon } from '../components/Icon'
 import { Shelves } from '../components/Shelves'
-import { useSession } from '../lib/auth'
+import { useMaybeSession } from '../lib/auth'
 import { displayName, plural } from '../lib/format'
-import { useLibrary, useProfile } from '../lib/hooks'
+import { useDocumentTitle, useLibrary, useProfile } from '../lib/hooks'
 
 /** Anyone's BookHive library, read-only, straight from their PDS. */
 export function Profile() {
   const { actor = '' } = useParams()
-  const { did } = useSession()
+  const me = useMaybeSession()
   const profile = useProfile(actor)
   const library = useLibrary(profile.data?.did)
+  useDocumentTitle(profile.data ? displayName(profile.data) : undefined)
 
   if (profile.isPending) return <Loading />
   if (profile.isError) return <ErrorNote error={profile.error} />
   const p = profile.data
-  const isMe = p.did === did
+  const isMe = p.did === me?.did
 
   return (
     <>
