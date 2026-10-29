@@ -2133,3 +2133,82 @@ p {
 .list-tags {
   margin-top: 8px;
 }
+
+/* ——— Handle typeahead (sign-in) ——— */
+
+.typeahead {
+  position: relative;
+}
+
+.typeahead-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 4px;
+}
+
+.typeahead-menu[hidden] {
+  display: none;
+}
+
+.typeahead-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.typeahead-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+}
+
+.typeahead-option[aria-selected='true'] {
+  background: var(--paper-sunk);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.typeahead-option .avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.typeahead-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.typeahead-name,
+.typeahead-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typeahead-name {
+  font-weight: 600;
+}
+
+.typeahead-handle {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.typeahead-credit {
+  margin: 4px 8px 2px;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}

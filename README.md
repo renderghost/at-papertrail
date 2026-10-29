@@ -27,6 +27,7 @@ Book, profile, list and author pages are public: they work signed out.
 Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book, social.popfeed.feed.list / listItem,
    │                                                social.popfeed.actor.profile (favourites), app.bsky.graph.follow
    │
+   ├──▶ typeahead.waow.tech                 account suggestions as you type your handle to sign in
    ├──▶ public.api.bsky.app                 profiles, who you follow
    ├──▶ plc.directory → each follow's PDS    their buzz.bookhive.book records
    ├──▶ each follow's PDS                    their social.popfeed.feed.review book reviews (read only)
