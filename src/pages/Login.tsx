@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { HandleCombobox } from '../components/HandleCombobox'
 import { useAuth } from '../lib/auth'
 import { describeError } from '../lib/errors'
 import { checkIdentifier } from '../lib/identity'
@@ -75,18 +76,14 @@ export function Login({ notice, next }: { notice?: string; next?: string }) {
         <form onSubmit={submit} noValidate className="stack">
           <div className="field">
             <label htmlFor="identifier">Handle or DID</label>
-            <input
+            <HandleCombobox
               id="identifier"
-              className="input"
               placeholder="alice.bsky.social"
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
               value={identifier}
-              aria-invalid={!!fieldError}
-              aria-describedby={fieldError ? 'identifier-error' : undefined}
-              onChange={(e) => {
-                setIdentifier(e.target.value)
+              invalid={!!fieldError}
+              describedBy={fieldError ? 'identifier-error' : undefined}
+              onChange={(value) => {
+                setIdentifier(value)
                 if (fieldError) setFieldError(null)
               }}
             />
@@ -106,8 +103,8 @@ export function Login({ notice, next }: { notice?: string; next?: string }) {
           )}
           <p className="muted small">
             You'll be sent to your own PDS (Bluesky, or wherever your account lives) to approve access. Papertrail never
-            sees your password and can only write BookHive book records. This browser stays signed in until you sign
-            out or your PDS ends the session.
+            sees your password, and can only write your books, lists, favourites and follows, in the formats BookHive
+            and PopFeed use. This browser stays signed in until you sign out or your PDS ends the session.
           </p>
         </form>
       </div>
