@@ -2,7 +2,7 @@
 
 A social reading client for [BookHive](https://bookhive.buzz), built on the AT Protocol. Log every book, see what the people you follow are reading, find who's reading the same books as you, and get your reading year **Covered**.
 
-Papertrail is a **front end with no database**: a static site plus one small, stateless relay function. You sign in with OAuth in the browser, and every write goes straight from your browser to your own PDS as a standard `buzz.bookhive.book` record. Anything you log here also appears on bookhive.buzz, and the reverse.
+Papertrail is a **front end with no database**: a static site plus two small, stateless functions. You sign in with OAuth in the browser, and every write goes straight from your browser to your own PDS, in the formats BookHive and PopFeed already use: `buzz.bookhive.book` for your books, PopFeed lists for your lists and shelves, PopFeed's profile record for your favourites, Bluesky follows for people. Anything you do here also appears on bookhive.buzz (and PopFeed), and the reverse.
 
 ## What's in it
 
@@ -10,27 +10,35 @@ Papertrail is a **front end with no database**: a static site plus one small, st
 | --- | --- |
 | **Library** | Your shelves (reading, want to read, finished, abandoned). Edit status, dates, progress (pages or %), half-star ratings, reviews and ownership. Re-reading a finished book keeps the earlier read in its history, as BookHive does. |
 | **Add a book** | Searches BookHive's own catalogue first, then Open Library and Google Books (duplicates dropped), matching each of those to BookHive by `hiveId`. Catalogued books appear on bookhive.buzz. Uncatalogued ones still save, flagged. |
-| **Book pages** | `/books/bk_…`, the same paths as bookhive.buzz. Catalogue details, series, the rating spread, your reading and re-reads, what people you follow thought (on BookHive and PopFeed, spoilers hidden), and every BookHive review and comment. Public: they work signed out. |
+| **Book pages** | `/books/bk_…`, the same paths as bookhive.buzz. Catalogue details, series, the rating spread, your reading and re-reads, the lists it's on, the author's own details when they're on [Byline](https://byline.pub), what people you follow thought (on BookHive and PopFeed, spoilers hidden), and every BookHive review and comment. |
+| **Lists** | `/shelves/:handle/:rkey`. Make, rank, reorder, annotate and share book lists; add from any book page or your library. Stored as PopFeed lists exactly as BookHive writes them, so they show on both. PopFeed's own shelves appear read-only. |
+| **Authors** | `/authors/:name`. The bibliography (editions merged, series in order), you and the author, which friends read them, and the author's Byline profile, follow button and forthcoming books, or an invitation to claim the page. |
 | **Feed** | "@friend started / finished / reviewed / wants to read …" from everyone you follow on Bluesky. |
 | **Book club** | For each book you're reading: who you follow is reading it now, and who has read it before (their reviews are folded away to avoid spoilers). One tap opens a Bluesky post to start the conversation. |
 | **Covered** | Wrapped-style story cards for any year or month: books and pages, month-by-month chart, top genres, longest and shortest, fastest read, highest rated, most-read author, bookends. |
-| **Profiles** | Anyone's BookHive library at `/profile/:handle`, read-only and public. |
+| **Profiles** | `/profile/:handle`: bio and links, currently reading, favourite books (PopFeed's `favorites.books`, editable on your own), lists, latest reviews, shelves, and a follow button. |
+| **Link previews** | Book, profile, list and author links unfold into proper cards on Bluesky, Slack, Discord and the like. |
+
+Book, profile, list and author pages are public: they work signed out.
 
 ## How it works
 
 ```
-Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book only
+Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book, social.popfeed.feed.list / listItem,
+   │                                                social.popfeed.actor.profile (favourites), app.bsky.graph.follow
    │
    ├──▶ public.api.bsky.app                 profiles, who you follow
    ├──▶ plc.directory → each follow's PDS    their buzz.bookhive.book records
    ├──▶ each follow's PDS                    their social.popfeed.feed.review book reviews (read only)
-   ├──▶ relay1.us-east.bsky.network          which follows use BookHive or PopFeed at all
+   ├──▶ relay1.us-east.bsky.network          which follows use BookHive or PopFeed; Byline's authors
+   ├──▶ Byline authors' PDSes                pub.byline.profile, pub.byline.book (author-signed details)
    ├──▶ @bookhive.buzz's PDS                 buzz.bookhive.catalogBook (rich book data, keyed by hiveId)
    ├──▶ /api/bookhive/* (Vercel function) ─▶ bookhive.buzz's XRPC: search, reviews, comments (no CORS upstream)
    └──▶ Open Library, Google Books           search, plus details for books BookHive hasn't catalogued
 ```
 
-- **OAuth scope** is `atproto repo:buzz.bookhive.book`: Papertrail can only create, edit and delete BookHive book records. Everything it reads is public.
+- **OAuth scopes** name exactly the collections above (`src/lib/oauthConfig.ts`); follows are create and delete only. Everything Papertrail reads is public. A session from before a scope was added is asked to sign in once more, at the moment it's needed, and comes straight back.
+- **Link previews:** `vercel.json` sends requests from link-preview crawlers for those pages to `api/share.ts`, which answers with Open Graph tags built from public data; people get the app as usual.
 - **Sign-in** follows the pattern from [renderghost/at-assemblage#13](https://github.com/renderghost/at-assemblage/pull/13), using `@atcute/oauth-browser-client` (`src/lib/oauth.ts`, `src/lib/auth.tsx`):
   - Handles resolve over DNS-over-HTTPS and XRPC in a race; DID documents come from PLC or did:web.
   - The callback is read from the fragment or the query string, consumed once, and scrubbed from the URL. You land back on the page that asked you to sign in.
