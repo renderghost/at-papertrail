@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Loading } from './components/bits'
 import { Layout } from './components/Layout'
@@ -7,13 +8,23 @@ import { AddBook } from './pages/AddBook'
 import { AuthorPage } from './pages/AuthorPage'
 import { BookClub } from './pages/BookClub'
 import { BookPage } from './pages/BookPage'
-import { Covered } from './pages/Covered'
 import { Feed } from './pages/Feed'
 import { Library } from './pages/Library'
 import { ListPage, ListsPage } from './pages/Lists'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Profile } from './pages/Profile'
+
+// Pages most visits never open load on demand, keeping the first load small.
+const Covered = lazy(() => import('./pages/Covered').then((m) => ({ default: m.Covered })))
+const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m.ImportPage })))
+const ExportPage = lazy(() => import('./pages/Export').then((m) => ({ default: m.ExportPage })))
+const FixPage = lazy(() => import('./pages/Fix').then((m) => ({ default: m.FixPage })))
+const SwitchPage = lazy(() => import('./pages/Switch').then((m) => ({ default: m.SwitchPage })))
+
+function OnDemand({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<Loading />}>{children}</Suspense>
+}
 
 /** Pages that need your session; signed out, they send you to sign in and back. */
 function RequireSession() {
@@ -61,13 +72,17 @@ function AppRoutes() {
         <Route path="authors/:name" element={<AuthorPage />} />
         <Route path="shelves/:actor" element={<ListsPage />} />
         <Route path="shelves/:actor/:rkey" element={<ListPage />} />
+        <Route path="switch" element={<OnDemand><SwitchPage /></OnDemand>} />
         <Route element={<RequireSession />}>
           {signedIn && <Route index element={<Library />} />}
           <Route path="add" element={<AddBook />} />
           <Route path="feed" element={<Feed />} />
           <Route path="club" element={<BookClub />} />
-          <Route path="covered" element={<Covered />} />
-          <Route path="covered/:period" element={<Covered />} />
+          <Route path="covered" element={<OnDemand><Covered /></OnDemand>} />
+          <Route path="covered/:period" element={<OnDemand><Covered /></OnDemand>} />
+          <Route path="import" element={<OnDemand><ImportPage /></OnDemand>} />
+          <Route path="export" element={<OnDemand><ExportPage /></OnDemand>} />
+          <Route path="fix" element={<OnDemand><FixPage /></OnDemand>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

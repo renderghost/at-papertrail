@@ -63,13 +63,23 @@ export function Library() {
           <Icon name="plus" size={18} /> Add a book
         </Link>
       </div>
+      <nav className="library-tools small" aria-label="Library tools">
+        <Link to="/import">Import</Link>
+        <Link to="/export">Export</Link>
+        <Link to="/fix">Fix matches</Link>
+      </nav>
 
       {entries.length === 0 ? (
         <Empty title="Start your paper trail">
           <p>Search millions of books from Open Library and Google Books, matched to BookHive's catalogue.</p>
-          <Link to="/add" className="btn btn-primary">
-            Find a book
-          </Link>
+          <div className="row" style={{ justifyContent: 'center' }}>
+            <Link to="/add" className="btn btn-primary">
+              Find a book
+            </Link>
+            <Link to="/switch" className="btn">
+              Bring your Goodreads, StoryGraph or Hardcover books
+            </Link>
+          </div>
         </Empty>
       ) : (
         <>
