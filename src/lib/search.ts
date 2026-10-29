@@ -198,6 +198,29 @@ export async function searchBooks(q: string, signal?: AbortSignal): Promise<Cand
   return mergeCandidates(ol.status === 'fulfilled' ? ol.value : [], gb.status === 'fulfilled' ? gb.value : [])
 }
 
+/**
+ * Open Library and Google Books results that BookHive's own search didn't
+ * already return, matched by ISBN or by title and first author.
+ */
+export function withoutCatalogued(
+  candidates: Candidate[],
+  catalogued: Pick<CatalogBook, 'title' | 'authors' | 'identifiers'>[],
+): Candidate[] {
+  const isbns = new Set<string>()
+  const keys = new Set<string>()
+  for (const book of catalogued) {
+    for (const isbn of [book.identifiers?.isbn13, book.identifiers?.isbn10]) if (isbn) isbns.add(isbn)
+    keys.add(bookKey(book.title, firstOf(book.authors)))
+  }
+  return candidates.filter(
+    (c) =>
+      !(c.isbn13 && isbns.has(c.isbn13)) &&
+      !(c.isbn10 && isbns.has(c.isbn10)) &&
+      !keys.has(bookKey(c.title, c.authors[0])) &&
+      !keys.has(bookKey(fullTitle(c), c.authors[0])),
+  )
+}
+
 export function fullTitle(c: Pick<Candidate, 'title' | 'subtitle'>): string {
   return c.subtitle ? `${c.title}: ${c.subtitle}` : c.title
 }

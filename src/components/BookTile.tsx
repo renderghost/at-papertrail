@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom'
 import { displayAuthors } from '../lib/bookhive/authors'
 import { STATUS, type BookEntry } from '../lib/bookhive/types'
+import { bookPath } from '../lib/paths'
 import { Progress, Stars } from './bits'
 import { Cover } from './Cover'
 
 export function BookTile({ entry }: { entry: BookEntry }) {
   const v = entry.value
   return (
-    <Link className="tile" to={`/book/${v.hiveId}`} state={{ entry }}>
+    <Link className="tile" to={bookPath(v.hiveId)} state={{ entry }}>
       <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} />
       <div>
         <div className="tile-title">{v.title}</div>
@@ -22,7 +23,7 @@ export function BookTile({ entry }: { entry: BookEntry }) {
 export function ReadingCard({ entry }: { entry: BookEntry }) {
   const v = entry.value
   return (
-    <Link className="reading-card" to={`/book/${v.hiveId}`} state={{ entry }}>
+    <Link className="reading-card" to={bookPath(v.hiveId)} state={{ entry }}>
       <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
       <div className="body">
         <h3>{v.title}</h3>

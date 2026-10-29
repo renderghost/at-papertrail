@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { getProfile } from './atproto'
-import { useSession } from './auth'
+import { useMaybeSession, useSession } from './auth'
+import { getHiveBook } from './bookhive/api'
 import { fetchCatalogBook } from './bookhive/catalog'
 import { createBook, deleteBook, loadLibrary, updateBook } from './bookhive/library'
 import type { BookEntry, BookRecord } from './bookhive/types'
@@ -16,6 +17,29 @@ export function useCatalog(hiveId: string | undefined, enabled = true) {
     staleTime: 6 * HOUR,
     gcTime: 6 * HOUR,
   })
+}
+
+/** BookHive's view of a book (everyone's reviews, comments, recent activity), via the relay. */
+export function useHiveBook(hiveId: string | undefined) {
+  return useQuery({
+    queryKey: ['hive-book', hiveId],
+    queryFn: ({ signal }) => getHiveBook(hiveId!, signal),
+    enabled: !!hiveId,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  })
+}
+
+/** Sets the tab title while a page is open. */
+export function useDocumentTitle(title: string | undefined) {
+  useEffect(() => {
+    if (!title) return
+    const previous = document.title
+    document.title = `${title} · Papertrail`
+    return () => {
+      document.title = previous
+    }
+  }, [title])
 }
 
 export function useProfile(actor: string | undefined) {
@@ -36,9 +60,9 @@ export function useLibrary(did: string | undefined) {
   })
 }
 
+/** The signed-in user's library; disabled (no data, not loading) when signed out. */
 export function useMyLibrary() {
-  const { did } = useSession()
-  return useLibrary(did)
+  return useLibrary(useMaybeSession()?.did)
 }
 
 /** Create, update and delete the signed-in user's book records, keeping the cache in step. */

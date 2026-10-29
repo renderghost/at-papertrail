@@ -135,7 +135,8 @@ describe('AuthProvider: callbacks', () => {
     expect(svc.finishOAuthSignIn).toHaveBeenCalledWith(params, expect.any(Function))
     expect(svc.resumeOAuthSession).not.toHaveBeenCalled()
     expect(String(replaceState.mock.calls[0]![2])).toBe('http://127.0.0.1:5173/')
-    expect(screen.getByTestId('path').textContent).toBe('/book/bk_abc')
+    // The router applies the navigation in a later render than the sign-in itself.
+    await waitFor(() => expect(screen.getByTestId('path').textContent).toBe('/book/bk_abc'))
   })
 
   it('resumes the existing session when a callback cannot be finished', async () => {

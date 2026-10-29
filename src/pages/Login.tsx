@@ -22,7 +22,8 @@ function Linkified({ text }: { text: string }) {
   )
 }
 
-export function Login({ notice }: { notice?: string }) {
+/** `next` is the in-app path to land on after signing in (default: here). */
+export function Login({ notice, next }: { notice?: string; next?: string }) {
   const { startOAuthSignIn } = useAuth()
   const [identifier, setIdentifier] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
@@ -45,7 +46,8 @@ export function Login({ notice }: { notice?: string }) {
     setError(null)
     try {
       // Come back to the page that asked for sign-in, e.g. a shared book link.
-      await startOAuthSignIn(check.value, window.location.pathname + window.location.search)
+      const returnTo = next ? `${import.meta.env.BASE_URL.replace(/\/$/, '')}${next}` : window.location.pathname + window.location.search
+      await startOAuthSignIn(check.value, returnTo)
     } catch (err) {
       setError(describeError(err).message)
       submitting.current = false
