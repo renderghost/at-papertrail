@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
 import { handle as bookhiveProxy } from './api/bookhive/[method].ts'
+import { handle as shareCard } from './api/share.ts'
 import { clientMetadata } from './src/lib/oauthConfig.ts'
 import { resolveSiteUrl, type ResolvedSiteUrl } from './src/lib/siteUrl.ts'
 
@@ -13,6 +14,7 @@ import { resolveSiteUrl, type ResolvedSiteUrl } from './src/lib/siteUrl.ts'
 function apiFunctions(): Plugin {
   const routes: [prefix: string, handler: (request: Request) => Promise<Response>][] = [
     ['/api/bookhive/', (request) => bookhiveProxy(request)],
+    ['/api/share', (request) => shareCard(request)],
   ]
   const middleware: Connect.NextHandleFunction = (req: IncomingMessage, res: ServerResponse, next) => {
     const url = req.url ?? ''

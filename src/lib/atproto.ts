@@ -97,10 +97,18 @@ export type Profile = {
   handle: string
   displayName?: string
   avatar?: string
+  /** Bluesky bio; only from getProfile, not from follow lists. */
+  description?: string
 }
 
 function toProfile(p: Profile): Profile {
-  return { did: p.did, handle: p.handle, displayName: p.displayName || undefined, avatar: p.avatar }
+  return {
+    did: p.did,
+    handle: p.handle,
+    displayName: p.displayName || undefined,
+    avatar: p.avatar,
+    ...(p.description ? { description: p.description } : {}),
+  }
 }
 
 export async function getProfile(actor: string, signal?: AbortSignal): Promise<Profile> {

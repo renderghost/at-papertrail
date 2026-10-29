@@ -111,3 +111,16 @@ export async function hiveIdForIsbn(isbn: string, signal?: AbortSignal): Promise
   const isbn10 = isbn13To10(clean)
   return isbn10 ? identifiersFor({ isbn10 }, signal) : null
 }
+
+export type AuthorBooks = { author: string; books: HiveBook[]; totalBooks: number }
+
+/** BookHive's catalogue books by an author, most popular first (up to 100). */
+export async function getAuthorBooks(author: string, signal?: AbortSignal): Promise<AuthorBooks> {
+  const res = await call<{ author?: string; books?: HiveBook[]; totalBooks?: number }>(
+    'getAuthorBooks',
+    { author, limit: 100, sort: 'popularity' },
+    signal,
+  )
+  const books = (res.books ?? []).filter((b) => typeof b?.id === 'string' && typeof b.title === 'string')
+  return { author: res.author ?? author, books, totalBooks: res.totalBooks ?? books.length }
+}

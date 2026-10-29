@@ -9,12 +9,21 @@ import { normaliseSiteUrl } from './siteUrl.ts'
 
 export const APP_NAME = 'Papertrail'
 
-/**
- * `atproto` is mandatory; `repo:buzz.bookhive.book` grants create/update/delete
- * on BookHive book records, the only collection this app writes, and nothing
- * else. Everything the app reads is public.
- */
-export const OAUTH_SCOPE = `atproto repo:${BOOK_COLLECTION}`
+/** Collections Papertrail writes, each behind its own scope. Everything it reads is public. */
+export const WRITE_SCOPES = {
+  /** Your books: status, dates, progress, ratings, reviews. */
+  books: `repo:${BOOK_COLLECTION}`,
+  /** Lists and shelves, in PopFeed's format (as BookHive writes them). */
+  lists: 'repo:social.popfeed.feed.list',
+  listItems: 'repo:social.popfeed.feed.listItem',
+  /** Your PopFeed profile record, for favourite books. */
+  profile: 'repo:social.popfeed.actor.profile',
+  /** Following readers and authors: create and delete only, as BookHive asks. */
+  follows: 'repo:app.bsky.graph.follow?action=create&action=delete',
+} as const
+
+/** `atproto` is mandatory; the rest grant writes to exactly the collections above. */
+export const OAUTH_SCOPE = ['atproto', ...Object.values(WRITE_SCOPES)].join(' ')
 
 /** The OAuth client document for a deployed site URL (origin plus base path, ending in "/"). */
 export function clientMetadata(siteUrl: string) {

@@ -4,11 +4,13 @@ import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './lib/auth'
 import { bookPath, loginPath, safeNext } from './lib/paths'
 import { AddBook } from './pages/AddBook'
+import { AuthorPage } from './pages/AuthorPage'
 import { BookClub } from './pages/BookClub'
 import { BookPage } from './pages/BookPage'
 import { Covered } from './pages/Covered'
 import { Feed } from './pages/Feed'
 import { Library } from './pages/Library'
+import { ListPage, ListsPage } from './pages/Lists'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
 import { Profile } from './pages/Profile'
@@ -56,6 +58,9 @@ function AppRoutes() {
         {/* Public: everything they show is public data, so they work signed out. */}
         <Route path="books/:hiveId" element={<BookPage />} />
         <Route path="profile/:actor" element={<Profile />} />
+        <Route path="authors/:name" element={<AuthorPage />} />
+        <Route path="shelves/:actor" element={<ListsPage />} />
+        <Route path="shelves/:actor/:rkey" element={<ListPage />} />
         <Route element={<RequireSession />}>
           {signedIn && <Route index element={<Library />} />}
           <Route path="add" element={<AddBook />} />

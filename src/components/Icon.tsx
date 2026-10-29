@@ -15,6 +15,10 @@ const PATHS = {
   chat: 'M4 5h16v11H9l-5 4z',
   play: 'M7 4.5v15l12-7.5z',
   back: 'M15 5l-7 7 7 7',
+  up: 'M12 19V5M6 11l6-6 6 6',
+  down: 'M12 5v14M6 13l6 6 6-6',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z',
+  list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
 } as const
 
 export type IconName = keyof typeof PATHS

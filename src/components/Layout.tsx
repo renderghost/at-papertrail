@@ -106,8 +106,9 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="footer">
-        Papertrail reads and writes <code>buzz.bookhive.book</code> records on your own PDS, so everything here also
-        shows up on <a href="https://bookhive.buzz">BookHive</a>. Book data from BookHive's catalogue,{' '}
+        Papertrail saves your books, lists and favourites on your own PDS in the formats{' '}
+        <a href="https://bookhive.buzz">BookHive</a> and <a href="https://popfeed.social">PopFeed</a> use, so they show up
+        there too. Book data from BookHive's catalogue, <a href="https://byline.pub">Byline</a>,{' '}
         <a href="https://openlibrary.org">Open Library</a> and Google Books.
       </footer>
     </>

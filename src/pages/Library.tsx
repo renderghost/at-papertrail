@@ -2,10 +2,38 @@ import { Link } from 'react-router-dom'
 import { Empty, ErrorNote, Loading } from '../components/bits'
 import { ReadingCard } from '../components/BookTile'
 import { Icon } from '../components/Icon'
+import { ListsGrid } from '../components/Lists'
 import { Shelves } from '../components/Shelves'
+import { useSession } from '../lib/auth'
 import { STATUS } from '../lib/bookhive/types'
-import { useMyLibrary } from '../lib/hooks'
 import { plural } from '../lib/format'
+import { useMyLibrary } from '../lib/hooks'
+import { shelvesPath } from '../lib/paths'
+import { useLists } from '../lib/useLists'
+
+/** Your four newest lists, with a way to make more. */
+function YourLists() {
+  const { did, session } = useSession()
+  const lists = useLists(did)
+  const handle = session.handle.startsWith('did:') ? did : session.handle
+  return (
+    <section className="section">
+      <div className="section-title">
+        <h2>Your lists</h2>
+        <Link className="btn btn-quiet btn-sm" to={shelvesPath(handle)}>
+          {lists.data?.length ? 'All lists' : 'Make a list'}
+        </Link>
+      </div>
+      {lists.data?.length ? (
+        <ListsGrid lists={lists.data.slice(0, 4)} owner={handle} />
+      ) : (
+        <p className="muted small">
+          Lists you make here are saved on your PDS in BookHive and PopFeed's format, so they show on both.
+        </p>
+      )}
+    </section>
+  )
+}
 
 export function Library() {
   const library = useMyLibrary()
@@ -58,6 +86,7 @@ export function Library() {
               </div>
             </section>
           )}
+          <YourLists />
           <section className="section">
             <div className="section-title">
               <h2>Shelves</h2>

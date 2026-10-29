@@ -4,7 +4,7 @@ Papertrail is a static site: Vercel builds it from this repository and serves it
 
 **https://papertrail.renderg.host/**
 
-alongside the other `renderg.host` apps in the `renderghost` Vercel team. It's a static site plus one stateless Vercel function (the BookHive relay, below). There's no database, and nothing needs configuring at runtime.
+alongside the other `renderg.host` apps in the `renderghost` Vercel team. It's a static site plus two stateless Vercel functions: the BookHive relay and the link-preview cards (both below). There's no database, and nothing needs configuring at runtime.
 
 ## How it fits together
 
@@ -13,6 +13,7 @@ alongside the other `renderg.host` apps in the `renderghost` Vercel team. It's a
 | [`vercel.json`](../vercel.json) | Vite build into `dist/`; routes unknown paths to `index.html` (the app's own router takes over) while missing `/assets/*` files stay real 404s; security headers, including a Content-Security-Policy; caching. |
 | [`src/lib/siteUrl.ts`](../src/lib/siteUrl.ts) | Decides which URL each build describes (below). |
 | [`api/bookhive/[method].ts`](../api/bookhive/%5Bmethod%5D.ts) | The BookHive relay: a Vercel function at `/api/bookhive/:method` ([below](#the-bookhive-relay-function)). |
+| [`api/share.ts`](../api/share.ts) | Link-preview cards for crawlers on book, profile, list and author pages ([below](#link-preview-cards)). |
 | `client-metadata.json` | Generated per build from that URL. A PDS fetches it during sign-in and only proceeds if its `client_id` is exactly the URL it was fetched from. |
 | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | Typecheck, tests and a production build on every pull request and push to `main`. |
 | [`.github/workflows/verify-deployment.yml`](../.github/workflows/verify-deployment.yml) | After every push to `main`, waits for the domain to serve that commit, then runs [`scripts/check-deployment.mjs`](../scripts/check-deployment.mjs) against it ([below](#automatic-checks-after-each-deployment)). |
@@ -90,6 +91,7 @@ Every build stamps `index.html` with the commit it was built from (`<meta name="
 - the app loads with its security headers (CSP, HSTS, nosniff, Referrer-Policy)
 - deep links serve the app, and missing assets are real 404s
 - the BookHive relay function answers
+- a link-preview crawler gets a share card for a book page, and a browser gets the app on the same URL
 
 A failure shows on the commit in GitHub (**Actions → Verify deployment**) with the exact check that failed. Run it on demand with **Actions → Verify deployment → Run workflow** (it then checks whatever is live, e.g. after an Instant Rollback), or locally with the command above.
 
@@ -108,6 +110,17 @@ bookhive.buzz's XRPC API sends no CORS headers, so the browser can't call it fro
 - **Retire it** once BookHive allows CORS (#42) or adds its `#bookhive_appview` service (#43).
 
 The deployment check asks for an unknown method and expects the function's own `404 MethodNotSupported`, so it proves the function is deployed without depending on bookhive.buzz.
+
+## Link-preview cards
+
+Papertrail is a single-page app, so a crawler fetching a link for a preview (Bluesky's card fetcher, Slack, Discord, iMessage, Mastodon…) would see an empty page. `vercel.json` has four rewrites ahead of the app's catch-all, for `/books/:hiveId`, `/profile/:actor`, `/shelves/:actor/:rkey` and `/authors/:name`. Each applies only when the `user-agent` header looks like a crawler (`bot`, `crawl`, `spider`, `preview`, `Cardyb`, `Bluesky`, `facebookexternalhit`, `WhatsApp`, `Embedly`, `Iframely`, `Mastodon`, `Pinterest`). It sends the request to `/api/share?kind=…`. Everyone else gets `index.html` as before.
+
+- **What it returns:** a tiny HTML page with Open Graph and Twitter tags and a `<link rel="canonical">` to the real page. The image is the book's cover, the reader's avatar, or the author's best-known cover, so nothing is rendered. Unknown or invalid pages get a plain Papertrail card, never an error.
+- **Public data only:** BookHive's catalogue record (via PLC and its PDS), the Bluesky AppView profile, the list record on its owner's PDS, and BookHive's `getAuthorBooks`. Every value is HTML-escaped and every parameter is validated before it is used.
+- **Cached** for an hour at the CDN, and served stale for up to a day while it refreshes; Vercel picks the route before the cache, so people and crawlers never share an entry.
+- **Self-contained** like the relay; `npm run dev` and `npm run preview` serve it at `/api/share` (e.g. `/api/share?kind=book&id=bk_…`; the user-agent routing only exists on Vercel), and `src/server/share.test.ts` tests it.
+
+Check a card by hand with `curl -A 'Bluesky Cardyb/1.1' https://papertrail.renderg.host/books/bk_…`. The deployment check asks for `/books/bk_deploymentCheck` both ways: a crawler must get `og:title`, a browser must get the app.
 
 ## Day to day
 
@@ -167,6 +180,9 @@ Use `127.0.0.1`, not `localhost`: atproto's loopback OAuth client redirects ther
 | Vercel build fails: "No site URL: client-metadata.json was not generated" | System environment variables aren't exposed to the build | Settings → Environment Variables → enable *Automatically expose System Environment Variables*, then redeploy |
 | Domain stuck on *Invalid Configuration* | DNS still points at GitHub, or Cloudflare proxies it | Setup step 3 |
 | **Verify deployment** fails: "the BookHive relay function answers — HTTP 200, not the function" | `index.html` answered `/api/…`: the app rewrite in `vercel.json` lost its `api/` exclusion | Restore `"source": "/((?!assets/\|api/).*)"` |
+| **Verify deployment** fails: "link-preview crawlers get a share card — the app instead" | The `has: user-agent` rewrites in `vercel.json` are missing, or sit after the app's catch-all | Put the four `/api/share` rewrites back ahead of the `index.html` rewrite |
+| A new post shows an old title or cover | Cards are cached for an hour, and served stale for up to a day | Wait, or redeploy (a deployment starts with an empty cache). Posts already made keep the card they were composed with: Bluesky stores it in the post |
+| A signed-in reader sees "Papertrail needs your permission to save lists to your PDS" (or favourites, or follows) | Their session predates those OAuth scopes | Expected once per reader: **Sign in again** asks their PDS for the new scopes and returns to the same page |
 | Book pages show no BookHive reviews; `/api/bookhive/getBook` returns `502` | bookhive.buzz is down or slow | Nothing to fix here; the page falls back to catalogue records |
 | Browser console: `Refused to load …` | The Content-Security-Policy blocked something new | Widen the named directive in `vercel.json` |
 | A page loads blank after a deploy, with a 404 for `/assets/…` | A tab open from before the deploy requested an old asset | Reload; hashed assets are replaced on every deploy |

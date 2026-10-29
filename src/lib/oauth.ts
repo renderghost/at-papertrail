@@ -48,6 +48,8 @@ export type OAuthSession = SessionFetch & {
   did: Did
   handle: string
   pds: string
+  /** What the PDS granted; older sessions may lack scopes added since. */
+  scope: string
   userAgent: OAuthUserAgent
 }
 
@@ -201,7 +203,8 @@ async function toOAuthSession(userAgent: OAuthUserAgent, onSessionEnded: Session
     // A failed DID document fetch must not block sign-in.
   }
   const pds = userAgent.session.info.aud
-  return { did, handle, pds, userAgent, fetchHandler: createFetchHandler(userAgent, did, pds, onSessionEnded) }
+  const scope = userAgent.session.token?.scope ?? ''
+  return { did, handle, pds, scope, userAgent, fetchHandler: createFetchHandler(userAgent, did, pds, onSessionEnded) }
 }
 
 /** Where to land after sign-in: an in-app path only, never another origin. */

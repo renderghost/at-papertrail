@@ -103,13 +103,15 @@ describe('startOAuthSignIn', () => {
     expect(rpc.createAuthorizationUrl).not.toHaveBeenCalled()
   })
 
-  it('asks only for BookHive book records and remembers where to return', async () => {
+  it('asks only for the collections Papertrail writes, and remembers where to return', async () => {
     rpc.createAuthorizationUrl.mockResolvedValue(new URL('https://pds.example.com/oauth/authorize?x=1'))
     void startOAuthSignIn('@Alice.Test', '/book/bk_abc')
     await vi.waitFor(() => expect(globalThis.location.assign).toHaveBeenCalled())
     expect(rpc.createAuthorizationUrl).toHaveBeenCalledWith({
       target: { type: 'account', identifier: 'alice.test' },
-      scope: 'atproto repo:buzz.bookhive.book',
+      scope:
+        'atproto repo:buzz.bookhive.book repo:social.popfeed.feed.list repo:social.popfeed.feed.listItem ' +
+        'repo:social.popfeed.actor.profile repo:app.bsky.graph.follow?action=create&action=delete',
       state: { returnTo: '/book/bk_abc' },
     })
     expect(globalThis.location.assign).toHaveBeenCalledWith('https://pds.example.com/oauth/authorize?x=1')
