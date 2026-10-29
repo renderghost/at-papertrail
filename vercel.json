@@ -5,6 +5,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/books/:hiveId", "has": [{ "type": "header", "key": "user-agent", "value": ".*(bot|Bot|BOT|crawl|Crawl|spider|Spider|preview|Preview|facebookexternalhit|Cardyb|Bluesky|WhatsApp|Embedly|Iframely|Mastodon|Pinterest).*" }], "destination": "/api/share?kind=book&id=:hiveId" },
+    { "source": "/profile/:actor", "has": [{ "type": "header", "key": "user-agent", "value": ".*(bot|Bot|BOT|crawl|Crawl|spider|Spider|preview|Preview|facebookexternalhit|Cardyb|Bluesky|WhatsApp|Embedly|Iframely|Mastodon|Pinterest).*" }], "destination": "/api/share?kind=profile&actor=:actor" },
+    { "source": "/shelves/:actor/:rkey", "has": [{ "type": "header", "key": "user-agent", "value": ".*(bot|Bot|BOT|crawl|Crawl|spider|Spider|preview|Preview|facebookexternalhit|Cardyb|Bluesky|WhatsApp|Embedly|Iframely|Mastodon|Pinterest).*" }], "destination": "/api/share?kind=shelf&actor=:actor&rkey=:rkey" },
+    { "source": "/authors/:name", "has": [{ "type": "header", "key": "user-agent", "value": ".*(bot|Bot|BOT|crawl|Crawl|spider|Spider|preview|Preview|facebookexternalhit|Cardyb|Bluesky|WhatsApp|Embedly|Iframely|Mastodon|Pinterest).*" }], "destination": "/api/share?kind=author&name=:name" },
     {
       "source": "/((?!assets/|api/).*)",
       "destination": "/index.html"

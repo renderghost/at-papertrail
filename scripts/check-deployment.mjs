@@ -42,8 +42,8 @@ const fail = (name, detail) => results.push({ ok: false, name, detail })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** No redirects: a PDS fetching client metadata must not be redirected. */
-async function get(path) {
-  const res = await fetch(at(path), { redirect: 'manual', headers: { 'user-agent': 'papertrail-deployment-check' } })
+async function get(path, userAgent = 'papertrail-deployment-check') {
+  const res = await fetch(at(path), { redirect: 'manual', headers: { 'user-agent': userAgent } })
   return { res, body: await res.text() }
 }
 
@@ -160,6 +160,19 @@ try {
   else fail('the BookHive relay function answers', `HTTP ${res.status}${error ? ` (${error})` : ', not the function'}`)
 } catch (err) {
   fail('the BookHive relay function answers', err.message)
+}
+
+// 5. Link previews: crawlers get a share card, people get the app, on the same URL.
+try {
+  const path = '/books/bk_deploymentCheck'
+  const crawler = await get(path, 'Mozilla/5.0 (compatible; Bluesky Cardyb/1.1; +mailto:support@bsky.app)')
+  if (crawler.res.status === 200 && crawler.body.includes('property="og:title"')) pass('link-preview crawlers get a share card')
+  else fail('link-preview crawlers get a share card', `HTTP ${crawler.res.status}${crawler.body.includes('<div id="root">') ? ', the app instead' : ''}`)
+  const person = await get(path, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15')
+  if (person.res.status === 200 && person.body.includes('<div id="root">')) pass('people get the app on the same URL')
+  else fail('people get the app on the same URL', `HTTP ${person.res.status}`)
+} catch (err) {
+  fail('link previews', err.message)
 }
 
 console.log(`\nDeployment check for ${site.href}${fetchFrom !== site.origin ? ` (fetched from ${fetchFrom})` : ''}`)
