@@ -71,6 +71,7 @@ beforeEach(() => {
     did: TEST_DID,
     handle: 'alice.test',
     pds: TEST_PDS,
+    scope: 'atproto repo:buzz.bookhive.book',
     userAgent: {} as OAuthUserAgent,
     fetchHandler: vi.fn(),
   }

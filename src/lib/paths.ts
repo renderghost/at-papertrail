@@ -21,3 +21,18 @@ export function safeNext(value: string | null | undefined): string | null {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return null
   return value
 }
+
+/** "/authors/Susanna%20Clarke", as on bookhive.buzz. */
+export function authorPath(name: string): string {
+  return `/authors/${encodeURIComponent(name)}`
+}
+
+/** A reader's lists. */
+export function shelvesPath(handleOrDid: string): string {
+  return `/shelves/${handleOrDid}`
+}
+
+/** One list: /shelves/:handle/:rkey, as on bookhive.buzz. */
+export function shelfPath(handleOrDid: string, rkey: string): string {
+  return `/shelves/${handleOrDid}/${rkey}`
+}
