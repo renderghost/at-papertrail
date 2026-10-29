@@ -2,15 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Avatar, Empty, ErrorNote, Loading, Stars, StatusPill } from '../components/bits'
+import { AuthorLinks } from '../components/AuthorLinks'
 import { BookEditor } from '../components/BookEditor'
+import { BylinePanel } from '../components/BylinePanel'
 import { Cover } from '../components/Cover'
 import { Icon } from '../components/Icon'
+import { AddToList } from '../components/Lists'
 import { RatingBars } from '../components/RatingBars'
 import { ReviewText } from '../components/ReviewText'
 import { useMaybeSession } from '../lib/auth'
 import { sameBookKeys } from '../lib/bookclub'
 import type { HiveActivity, HiveBookDetail, HiveComment, HiveReview } from '../lib/bookhive/api'
-import { displayAuthors } from '../lib/bookhive/authors'
 import { bookhiveBookUrl } from '../lib/bookhive/catalog'
 import { describeSeries, parseSeries } from '../lib/bookhive/series'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookIdentifiers, type BookStatus, type CatalogBook } from '../lib/bookhive/types'
@@ -99,7 +101,9 @@ export function BookPage() {
             )}
           </div>
           <h1>{title}</h1>
-          <p className="byline">by {displayAuthors(authors)}</p>
+          <p className="byline">
+            by <AuthorLinks authors={authors} />
+          </p>
           {series && (
             <p className="series">
               {series.url ? (
@@ -165,6 +169,17 @@ export function BookPage() {
           <AddFromPage hiveId={hiveId} title={title!} authors={authors} catalog={book} source={theirs} />
         )}
       </section>
+
+      {me && (
+        <section className="section-tight">
+          <AddToList
+            did={me.did}
+            book={{ hiveId, title: title!, authors, identifiers, coverUrl: book?.cover ?? details?.coverUrl, genres: book?.genres }}
+          />
+        </section>
+      )}
+
+      <BylinePanel hiveId={hiveId} identifiers={identifiers} />
 
       {me && <NetworkReaders did={me.did} readers={network.readers} entry={known} hiveId={hiveId} identifiers={identifiers} loading={network.status === 'loading'} />}
 
