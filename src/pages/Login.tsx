@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { HandleCombobox } from '../components/HandleCombobox'
 import { useAuth } from '../lib/auth'
 import { describeError } from '../lib/errors'
@@ -105,6 +106,9 @@ export function Login({ notice, next }: { notice?: string; next?: string }) {
             You'll be sent to your own PDS (Bluesky, or wherever your account lives) to approve access. Papertrail never
             sees your password, and can only write your books, lists, favourites and follows, in the formats BookHive
             and PopFeed use. This browser stays signed in until you sign out or your PDS ends the session.
+          </p>
+          <p className="small">
+            Coming from Goodreads, StoryGraph or Hardcover? <Link to="/switch">Bring your books with you</Link>.
           </p>
         </form>
       </div>

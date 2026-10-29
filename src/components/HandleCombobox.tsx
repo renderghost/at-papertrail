@@ -1,18 +1,10 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useEffect, useId, useState, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent } from 'react'
+import { useDebounced } from '../lib/hooks'
 import { searchActors, typeaheadQuery, type ActorSuggestion } from '../lib/typeahead'
 import { Avatar } from './bits'
 
 const DEBOUNCE_MS = 150
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms)
-    return () => clearTimeout(timer)
-  }, [value, ms])
-  return debounced
-}
 
 /** The CDN avatar, then the copy on the account's own PDS, then an initial. */
 function SuggestionAvatar({ actor }: { actor: ActorSuggestion }) {

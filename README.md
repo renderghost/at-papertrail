@@ -18,8 +18,12 @@ Papertrail is a **front end with no database**: a static site plus two small, st
 | **Covered** | Wrapped-style story cards for any year or month: books and pages, month-by-month chart, top genres, longest and shortest, fastest read, highest rated, most-read author, bookends. |
 | **Profiles** | `/profile/:handle`: bio and links, currently reading, favourite books (PopFeed's `favorites.books`, editable on your own), lists, latest reviews, shelves, and a follow button. |
 | **Link previews** | Book, profile, list and author links unfold into proper cards on Bluesky, Slack, Discord and the like. |
+| **Import** | `/import`. Goodreads, StoryGraph and Hardcover CSVs, read in the browser. It only fills gaps (never overwrites), shows every change first, lets you match or skip books BookHive doesn't know, turns shelves into lists, and can be undone. Re-running it carries on where it stopped. |
+| **Export** | `/export`. A Goodreads-layout CSV (Goodreads and StoryGraph both import it), your exact BookHive and PopFeed records as JSON, or your whole repository. |
+| **Fix matches** | `/fix`. Point books BookHive's catalogue doesn't know at the right entry, and merge books you have twice; reads, ratings, reviews and list entries come along. |
+| **Switching guide** | `/switch`. How to leave Goodreads, StoryGraph or Hardcover, what comes across, and what doesn't yet. |
 
-Book, profile, list and author pages are public: they work signed out.
+Book, profile, list and author pages, and the switching guide, are public: they work signed out.
 
 ## How it works
 
