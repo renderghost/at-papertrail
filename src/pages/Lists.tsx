@@ -3,13 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Avatar, Empty, ErrorNote, Loading } from '../components/bits'
 import { Cover } from '../components/Cover'
 import { Icon } from '../components/Icon'
-import { ListsGrid, NewListForm, PermissionNote } from '../components/Lists'
+import { ListsGrid, ListTags, NewListForm, PermissionNote } from '../components/Lists'
 import { useMaybeSession } from '../lib/auth'
 import { displayAuthors, firstAuthor } from '../lib/bookhive/authors'
 import { describeError } from '../lib/errors'
 import { displayName, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary, useProfile } from '../lib/hooks'
-import { isPopfeedShelf, itemIsBook, type BookList, type ListItem } from '../lib/lists'
+import { isPopfeedShelf, itemIsBook, listTags, parseTags, type BookList, type ListItem } from '../lib/lists'
 import { bookPath, profilePath, shelfPath, shelvesPath } from '../lib/paths'
 import { useListWrites, useLists } from '../lib/useLists'
 import { useCanWrite } from '../lib/usePeople'
@@ -42,6 +42,23 @@ export function ListsPage() {
           </div>
         </div>
       </div>
+      <section className="section">
+        {lists.isPending ? (
+          <Loading>Reading lists…</Loading>
+        ) : lists.isError ? (
+          <ErrorNote error={lists.error} />
+        ) : lists.data.length === 0 ? (
+          <Empty title="No lists yet">
+            <p>
+              {isMe
+                ? 'Lists are saved on your PDS in the same format as BookHive and PopFeed, so they show up there too.'
+                : `${displayName(p)} hasn't made any book lists on BookHive or PopFeed.`}
+            </p>
+          </Empty>
+        ) : (
+          <ListsGrid lists={lists.data} owner={p.handle} />
+        )}
+      </section>
       {isMe && (
         <section className="section">
           <div className="section-title">
@@ -49,21 +66,6 @@ export function ListsPage() {
           </div>
           {allowed ? <NewListForm /> : <PermissionNote scope="lists" what="lists" />}
         </section>
-      )}
-      {lists.isPending ? (
-        <Loading>Reading lists…</Loading>
-      ) : lists.isError ? (
-        <ErrorNote error={lists.error} />
-      ) : lists.data.length === 0 ? (
-        <Empty title={isMe ? 'No lists yet' : 'No lists yet'}>
-          <p>
-            {isMe
-              ? 'Lists are saved on your PDS in the same format as BookHive and PopFeed, so they show up there too.'
-              : `${displayName(p)} hasn't made any book lists on BookHive or PopFeed.`}
-          </p>
-        </Empty>
-      ) : (
-        <ListsGrid lists={lists.data} owner={p.handle} />
       )}
     </>
   )
@@ -128,6 +130,7 @@ function ListHeader({
           by <Link to={profilePath(owner.handle)}>{displayName(owner)}</Link> · {plural(list.items.length, 'book')}
           {list.value.ordered ? ' · ranked' : ''}
         </p>
+        <ListTags list={list} />
       </div>
       <div className="row">
         {children}
@@ -190,6 +193,8 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
   const [name, setName] = useState(list.value.name)
   const [description, setDescription] = useState(list.value.description ?? '')
   const [ordered, setOrdered] = useState(!!list.value.ordered)
+  const storedTags = listTags(list.value).join(', ')
+  const [tags, setTags] = useState(storedTags)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const run = async (fn: () => Promise<unknown>) => {
@@ -225,7 +230,9 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
           onSubmit={(e) => {
             e.preventDefault()
             void run(async () => {
-              await writes.update.mutateAsync({ list, patch: { name: name.trim() || list.value.name, description: description.trim(), ordered } })
+              const patch = { name: name.trim() || list.value.name, description: description.trim(), ordered }
+              // Tags are rewritten only when edited, so a list tagged elsewhere keeps its own.
+              await writes.update.mutateAsync({ list, patch: tags === storedTags ? patch : { ...patch, tags: parseTags(tags) } })
               setEditing(false)
             })
           }}
@@ -237,6 +244,10 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
           <div className="field">
             <label htmlFor="edit-description">Description</label>
             <textarea id="edit-description" className="input" rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="edit-tags">Tags (separated by commas)</label>
+            <input id="edit-tags" className="input" value={tags} onChange={(e) => setTags(e.target.value)} />
           </div>
           <label className="checkbox">
             <input type="checkbox" checked={ordered} onChange={(e) => setOrdered(e.target.checked)} /> Ranked (in a set order)

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { BookIdentifiers } from '../lib/bookhive/types'
 import { describeError } from '../lib/errors'
 import { plural } from '../lib/format'
-import { isPopfeedShelf, itemIsBook, type BookList, type ListBook } from '../lib/lists'
+import { isPopfeedShelf, itemIsBook, listTags, parseTags, type BookList, type ListBook } from '../lib/lists'
 import type { WRITE_SCOPES } from '../lib/oauthConfig'
 import { shelfPath } from '../lib/paths'
 import { useListWrites, useLists } from '../lib/useLists'
@@ -53,6 +53,7 @@ export function ListCard({ list, owner }: { list: BookList; owner: string }) {
           {isPopfeedShelf(list) ? ' · PopFeed shelf' : ''}
         </p>
         {list.value.description && <p className="small list-card-desc">{list.value.description}</p>}
+        <ListTags list={list} />
       </div>
     </Link>
   )
@@ -68,19 +69,35 @@ export function ListsGrid({ lists, owner }: { lists: BookList[]; owner: string }
   )
 }
 
+export function ListTags({ list }: { list: BookList }) {
+  const tags = listTags(list.value)
+  if (!tags.length) return null
+  return (
+    <div className="tags list-tags">
+      {tags.map((t) => (
+        <span key={t} className="tag">
+          {t}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 /** A form for a new list; calls back with the created list. */
 export function NewListForm({ onCreated, compact = false }: { onCreated?: (list: BookList) => void; compact?: boolean }) {
   const { create } = useListWrites()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [ordered, setOrdered] = useState(false)
+  const [tags, setTags] = useState('')
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
-    const list = await create.mutateAsync({ name, description, ordered })
+    const list = await create.mutateAsync({ name, description, ordered, tags: parseTags(tags) })
     setName('')
     setDescription('')
     setOrdered(false)
+    setTags('')
     onCreated?.(list)
   }
   return (
@@ -107,6 +124,16 @@ export function NewListForm({ onCreated, compact = false }: { onCreated?: (list:
               maxLength={500}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="list-tags">Tags (optional, separated by commas)</label>
+            <input
+              id="list-tags"
+              className="input"
+              placeholder="e.g. cosy, winter"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
             />
           </div>
           <label className="checkbox">

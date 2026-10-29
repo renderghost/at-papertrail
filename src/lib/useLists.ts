@@ -40,7 +40,7 @@ export function useListWrites() {
 
   return {
     create: useMutation({
-      mutationFn: (input: { name: string; description?: string; ordered?: boolean }) => createList(session, input),
+      mutationFn: (input: { name: string; description?: string; ordered?: boolean; tags?: string[] }) => createList(session, input),
       onSuccess: put,
     }),
     update: useMutation({

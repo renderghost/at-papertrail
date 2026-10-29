@@ -14,6 +14,49 @@ import { procedure, XrpcError, type SessionFetch } from './xrpc'
 
 export const LIST = 'social.popfeed.feed.list'
 export const LIST_ITEM = 'social.popfeed.feed.listItem'
+export const MAX_TAGS = 10
+
+const utf8 = new TextEncoder()
+
+/** Clips text to a lexicon `maxLength`, which counts UTF-8 bytes, without splitting a character. */
+export function clipBytes(text: string, max: number): string {
+  if (utf8.encode(text).length <= max) return text
+  let out = ''
+  let bytes = 0
+  for (const ch of text) {
+    bytes += utf8.encode(ch).length
+    if (bytes > max) break
+    out += ch
+  }
+  return out
+}
+
+/** Tags as typed, separated by commas ("cosy, #winter"): trimmed, without a leading #, no repeats. */
+export function parseTags(text: string): string[] {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const raw of text.split(',')) {
+    const tag = clipBytes(raw.trim().replace(/^#+\s*/, ''), 50).trim()
+    const key = tag.toLocaleLowerCase('en-GB')
+    if (!tag || seen.has(key)) continue
+    seen.add(key)
+    tags.push(tag)
+  }
+  return tags.slice(0, MAX_TAGS)
+}
+
+/** A list's tags as stored, skipping anything malformed. */
+export function listTags(value: ListRecord): string[] {
+  return Array.isArray(value.tags) ? value.tags.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : []
+}
+
+/** Holds the typed fields of a list to the lexicon's limits; other fields pass through. */
+function withinLimits(patch: Partial<ListRecord>): Partial<ListRecord> {
+  const out = { ...patch }
+  if (out.name !== undefined) out.name = clipBytes(out.name.trim(), 100)
+  if (out.description !== undefined) out.description = clipBytes(out.description.trim(), 500)
+  return out
+}
 
 export type ListRecord = {
   $type?: typeof LIST
@@ -164,14 +207,14 @@ export function newListItem(listUri: string, book: ListBook, note?: string, now 
     $type: LIST_ITEM,
     creativeWorkType: 'book',
     identifiers,
-    title: book.title,
-    mainCredit: firstAuthor(book.authors),
+    title: clipBytes(book.title, 1000),
+    mainCredit: clipBytes(firstAuthor(book.authors), 1000),
     mainCreditRole: 'author',
     ...(book.coverUrl?.startsWith('https://') ? { posterUrl: book.coverUrl } : {}),
     ...(book.genres?.length ? { genres: book.genres.slice(0, 10) } : {}),
     listUri,
     addedAt: now(),
-    ...(note?.trim() ? { description: note.trim().slice(0, 5000) } : {}),
+    ...(note?.trim() ? { description: clipBytes(note.trim(), 5000) } : {}),
   }
 }
 
@@ -209,15 +252,16 @@ function uriFor(did: string, collection: string, rkey: string): string {
 
 export async function createList(
   session: SessionFetch,
-  input: { name: string; description?: string; ordered?: boolean },
+  input: { name: string; description?: string; ordered?: boolean; tags?: string[] },
   now = () => new Date().toISOString(),
 ): Promise<BookList> {
+  const { name = '', description } = withinLimits({ name: input.name, description: input.description ?? '' })
   const value: ListRecord = {
     $type: LIST,
-    name: input.name.trim().slice(0, 100),
-    ...(input.description?.trim() ? { description: input.description.trim().slice(0, 500) } : {}),
+    name,
+    ...(description ? { description } : {}),
     ordered: input.ordered ?? false,
-    tags: [],
+    tags: input.tags ?? [],
     createdAt: now(),
   }
   const res = await procedure<WriteResult>(session, 'com.atproto.repo.createRecord', {
@@ -230,7 +274,7 @@ export async function createList(
 
 /** Compare-and-swap update of the list record; fields this app doesn't know are kept. */
 export async function updateList(session: SessionFetch, list: BookList, patch: Partial<ListRecord>): Promise<BookList> {
-  const value: ListRecord = { ...list.value, ...patch, $type: LIST }
+  const value: ListRecord = { ...list.value, ...withinLimits(patch), $type: LIST }
   if (value.description === '') delete value.description
   try {
     const res = await procedure<WriteResult>(session, 'com.atproto.repo.putRecord', {
@@ -292,7 +336,7 @@ export function reorderList(session: SessionFetch, list: BookList, uris: string[
 
 export async function updateItemNote(session: SessionFetch, list: BookList, item: ListItem, note: string): Promise<BookList> {
   const value: ListItemRecord = { ...item.value, $type: LIST_ITEM }
-  if (note.trim()) value.description = note.trim().slice(0, 5000)
+  if (note.trim()) value.description = clipBytes(note.trim(), 5000)
   else delete value.description
   try {
     const res = await procedure<WriteResult>(session, 'com.atproto.repo.putRecord', {

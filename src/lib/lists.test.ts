@@ -2,15 +2,20 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   addToList,
   buildLists,
+  clipBytes,
+  createList,
   deleteList,
   isPopfeedShelf,
   itemIsBook,
   LIST,
   LIST_ITEM,
+  listTags,
   newListItem,
   orderItems,
+  parseTags,
   removeFromList,
   reorderList,
+  updateList,
   type BookList,
   type ListItem,
 } from './lists'
@@ -163,5 +168,46 @@ describe('writes', () => {
     const s = session()
     await reorderList(s, base, [itemUri('1')])
     expect(s.calls[0]).toMatchObject({ nsid: 'com.atproto.repo.putRecord', body: { swapRecord: 'cl', record: { ordered: true } } })
+  })
+
+  it('creates a list with its tags, held to the lexicon limits', async () => {
+    const s = session()
+    const list = await createList(s, { name: `  ${'é'.repeat(60)}  `, description: ' ', tags: ['cosy'] }, () => 'now')
+    const record = s.calls[0]!.body.record
+    expect(new TextEncoder().encode(record.name).length).toBe(100)
+    expect(record).not.toHaveProperty('description')
+    expect(record).toMatchObject({ $type: LIST, tags: ['cosy'], ordered: false, createdAt: 'now' })
+    expect(list.rkey).toBe('new')
+  })
+
+  it('updates only what it is given, keeping tags it did not touch', async () => {
+    const s = session()
+    const tagged = { ...base, value: { ...base.value, tags: Array.from({ length: 12 }, (_, i) => `t${i}`) } }
+    await updateList(s, tagged, { name: 'Renamed', description: '' })
+    const record = s.calls[0]!.body.record
+    expect(record.name).toBe('Renamed')
+    expect(record.tags).toHaveLength(12)
+    expect(record).not.toHaveProperty('description')
+  })
+})
+
+describe('tags', () => {
+  it('parses what people type', () => {
+    expect(parseTags(' cosy, #Winter reads,, cosy , COSY,#  ')).toEqual(['cosy', 'Winter reads'])
+    expect(parseTags(Array.from({ length: 15 }, (_, i) => `t${i}`).join(','))).toHaveLength(10)
+    expect(new TextEncoder().encode(parseTags('ü'.repeat(40))[0]).length).toBe(50)
+  })
+
+  it('reads stored tags defensively', () => {
+    expect(listTags({ name: 'x', createdAt: '', tags: ['a', '', 3, ' '] as unknown as string[] })).toEqual(['a'])
+    expect(listTags({ name: 'x', createdAt: '' })).toEqual([])
+  })
+})
+
+describe('clipBytes', () => {
+  it('counts UTF-8 bytes and never splits a character', () => {
+    expect(clipBytes('abc', 3)).toBe('abc')
+    expect(clipBytes('aé', 2)).toBe('a')
+    expect(clipBytes('📚📚', 5)).toBe('📚')
   })
 })

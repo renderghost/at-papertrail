@@ -2129,3 +2129,7 @@ p {
 .editions li + li {
   margin-top: 4px;
 }
+
+.list-tags {
+  margin-top: 8px;
+}
