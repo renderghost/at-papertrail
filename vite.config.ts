@@ -1,9 +1,39 @@
 /// <reference types="vitest/config" />
-import type { ServerResponse } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import react from '@vitejs/plugin-react'
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
+import { handle as bookhiveProxy } from './api/bookhive/[method].ts'
 import { clientMetadata } from './src/lib/oauthConfig.ts'
 import { resolveSiteUrl, type ResolvedSiteUrl } from './src/lib/siteUrl.ts'
+
+/**
+ * Serves the Vercel functions in `api/` from the dev and preview servers, so
+ * `npm run dev` behaves like a deployment. Each function is a Web handler.
+ */
+function apiFunctions(): Plugin {
+  const routes: [prefix: string, handler: (request: Request) => Promise<Response>][] = [
+    ['/api/bookhive/', (request) => bookhiveProxy(request)],
+  ]
+  const middleware: Connect.NextHandleFunction = (req: IncomingMessage, res: ServerResponse, next) => {
+    const url = req.url ?? ''
+    const route = routes.find(([prefix]) => url.startsWith(prefix))
+    if (!route) return next()
+    const request = new Request(new URL(url, 'http://127.0.0.1'), { method: req.method })
+    route[1](request).then(
+      async (response) => {
+        res.statusCode = response.status
+        response.headers.forEach((value, key) => res.setHeader(key, value))
+        res.end(Buffer.from(await response.arrayBuffer()))
+      },
+      (err: unknown) => next(err),
+    )
+  }
+  return {
+    name: 'papertrail-api-functions',
+    configureServer: (server) => void server.middlewares.use(middleware),
+    configurePreviewServer: (server) => void server.middlewares.use(middleware),
+  }
+}
 
 /**
  * Publishes /client-metadata.json for the build's site URL: emitted into the
@@ -74,7 +104,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
       // The URL this build's OAuth metadata describes; the app refuses to start sign-in anywhere else.
       __SITE_URL__: JSON.stringify(site?.url ?? ''),
     },
-    plugins: [react(), oauthClientMetadata(site, strict), buildStamp(commit)],
+    plugins: [react(), oauthClientMetadata(site, strict), buildStamp(commit), apiFunctions()],
     // Serve dev over the loopback IP, which atproto's loopback OAuth client requires.
     server: { host: '127.0.0.1', port: 5173, strictPort: true },
     preview: { host: '127.0.0.1' },

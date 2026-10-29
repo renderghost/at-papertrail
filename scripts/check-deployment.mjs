@@ -146,6 +146,22 @@ try {
   fail('routing', err.message)
 }
 
+// 4. The BookHive relay function is deployed. An unknown method is refused by the
+// function itself, so this never depends on bookhive.buzz being up.
+try {
+  const { res, body } = await get('/api/bookhive/deploymentCheck')
+  let error
+  try {
+    error = JSON.parse(body).error
+  } catch {
+    // Not JSON: the SPA or a platform error page answered instead of the function.
+  }
+  if (res.status === 404 && error === 'MethodNotSupported') pass('the BookHive relay function answers')
+  else fail('the BookHive relay function answers', `HTTP ${res.status}${error ? ` (${error})` : ', not the function'}`)
+} catch (err) {
+  fail('the BookHive relay function answers', err.message)
+}
+
 console.log(`\nDeployment check for ${site.href}${fetchFrom !== site.origin ? ` (fetched from ${fetchFrom})` : ''}`)
 for (const r of results) console.log(`${r.ok ? '  ✓' : '  ✗'} ${r.name}${r.detail ? ` — ${r.detail}` : ''}`)
 const failed = results.filter((r) => !r.ok)
