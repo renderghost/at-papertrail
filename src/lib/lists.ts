@@ -4,7 +4,7 @@ import type { BookIdentifiers } from './bookhive/types'
 import { StaleRecordError } from './errors'
 import { resolvePds } from './identity'
 import { nextTid } from './tid'
-import { procedure, XrpcError, type SessionFetch } from './xrpc'
+import { applyWrites, procedure, XrpcError, type SessionFetch, type Write, type WriteResult } from './xrpc'
 
 /**
  * Lists and shelves, stored as PopFeed lists exactly as BookHive writes them
@@ -225,22 +225,6 @@ export function itemIsBook(item: ListItem, book: { hiveId: string; identifiers?:
   return (!!ids.isbn13 && ids.isbn13 === book.identifiers?.isbn13) || (!!ids.isbn10 && ids.isbn10 === book.identifiers?.isbn10)
 }
 
-type Write =
-  | { $type: 'com.atproto.repo.applyWrites#create'; collection: string; rkey: string; value: unknown }
-  | { $type: 'com.atproto.repo.applyWrites#update'; collection: string; rkey: string; value: unknown }
-  | { $type: 'com.atproto.repo.applyWrites#delete'; collection: string; rkey: string }
-
-type WriteResult = { uri: string; cid: string }
-
-async function applyWrites(session: SessionFetch, writes: Write[]): Promise<{ results?: (WriteResult | object)[] }> {
-  let last: { results?: (WriteResult | object)[] } = {}
-  // The PDS accepts at most 200 writes per call.
-  for (let i = 0; i < writes.length; i += 200) {
-    last = await procedure(session, 'com.atproto.repo.applyWrites', { repo: session.did, writes: writes.slice(i, i + 200) })
-  }
-  return last
-}
-
 function staleOr(err: unknown): never {
   if (err instanceof XrpcError && err.error === 'InvalidSwap') throw new StaleRecordError()
   throw err
@@ -311,8 +295,7 @@ export async function addToList(session: SessionFetch, list: BookList, book: Lis
     value = { ...list.value, $type: LIST, itemOrder: [...list.items.map((i) => i.uri), item.uri] }
     writes.push({ $type: 'com.atproto.repo.applyWrites#update', collection: LIST, rkey: list.rkey, value })
   }
-  const res = await applyWrites(session, writes)
-  const [created, updated] = (res.results ?? []) as WriteResult[]
+  const [created, updated] = (await applyWrites(session, writes)) as WriteResult[]
   const items = [...list.items, { ...item, cid: created?.cid ?? '' }]
   return { ...list, cid: updated?.cid ?? list.cid, value, items: orderItems(value, items) }
 }
@@ -324,8 +307,7 @@ export async function removeFromList(session: SessionFetch, list: BookList, item
     value = { ...list.value, $type: LIST, itemOrder: list.value.itemOrder.filter((u) => u !== item.uri) }
     writes.push({ $type: 'com.atproto.repo.applyWrites#update', collection: LIST, rkey: list.rkey, value })
   }
-  const res = await applyWrites(session, writes)
-  const updated = (res.results ?? [])[1] as WriteResult | undefined
+  const updated = (await applyWrites(session, writes))[1] as WriteResult | undefined
   return { ...list, cid: updated?.cid ?? list.cid, value, items: list.items.filter((i) => i.uri !== item.uri) }
 }
 
@@ -351,4 +333,54 @@ export async function updateItemNote(session: SessionFetch, list: BookList, item
   } catch (err) {
     return staleOr(err)
   }
+}
+
+/**
+ * Writes that point a list's items for the `from` books at `to` instead (the
+ * match fixer, #60). An item is updated in place, or deleted when the list
+ * already holds `to`, and a ranked list's order drops what was deleted.
+ */
+export function repointWrites(list: BookList, from: Set<string>, to: ListBook): Write[] {
+  const moving = list.items.filter((i) => !!i.value.identifiers.hiveId && from.has(i.value.identifiers.hiveId))
+  if (!moving.length) return []
+  let hasTarget = list.items.some((i) => !moving.includes(i) && itemIsBook(i, to))
+  const writes: Write[] = []
+  const removed = new Set<string>()
+  for (const item of moving) {
+    if (hasTarget) {
+      writes.push({ $type: 'com.atproto.repo.applyWrites#delete', collection: LIST_ITEM, rkey: item.rkey })
+      removed.add(item.uri)
+      continue
+    }
+    const identifiers = { ...item.value.identifiers, hiveId: to.hiveId }
+    if (!identifiers.isbn13 && to.identifiers?.isbn13) identifiers.isbn13 = to.identifiers.isbn13
+    if (!identifiers.isbn10 && to.identifiers?.isbn10) identifiers.isbn10 = to.identifiers.isbn10
+    const value: ListItemRecord = {
+      ...item.value,
+      $type: LIST_ITEM,
+      identifiers,
+      title: clipBytes(to.title, 1000),
+      mainCredit: clipBytes(firstAuthor(to.authors), 1000),
+    }
+    writes.push({ $type: 'com.atproto.repo.applyWrites#update', collection: LIST_ITEM, rkey: item.rkey, value })
+    hasTarget = true
+  }
+  if (removed.size && list.value.itemOrder?.some((uri) => removed.has(uri))) {
+    const value: ListRecord = { ...list.value, $type: LIST, itemOrder: list.value.itemOrder.filter((uri) => !removed.has(uri)) }
+    writes.push({ $type: 'com.atproto.repo.applyWrites#update', collection: LIST, rkey: list.rkey, value })
+  }
+  return writes
+}
+
+/** Points every one of your lists' items for the `from` books at `to`; returns how many lists changed. */
+export async function repointListItems(session: SessionFetch, lists: BookList[], from: Set<string>, to: ListBook): Promise<number> {
+  let changed = 0
+  for (const list of lists) {
+    if (list.did !== session.did) continue
+    const writes = repointWrites(list, from, to)
+    if (!writes.length) continue
+    await applyWrites(session, writes)
+    changed++
+  }
+  return changed
 }

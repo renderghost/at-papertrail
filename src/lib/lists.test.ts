@@ -15,6 +15,7 @@ import {
   parseTags,
   removeFromList,
   reorderList,
+  repointWrites,
   updateList,
   type BookList,
   type ListItem,
@@ -209,5 +210,43 @@ describe('clipBytes', () => {
     expect(clipBytes('abc', 3)).toBe('abc')
     expect(clipBytes('aé', 2)).toBe('a')
     expect(clipBytes('📚📚', 5)).toBe('📚')
+  })
+})
+
+describe('repointWrites', () => {
+  const ranked: BookList = {
+    uri: listUri('r'),
+    cid: 'cr',
+    rkey: 'r',
+    did: DID,
+    value: { name: 'Ranked', createdAt: '', ordered: true, itemOrder: [itemUri('old'), itemUri('new')] },
+    items: [
+      { ...item('old', listUri('r')), rkey: 'old', value: { ...item('old', listUri('r')).value, identifiers: { hiveId: 'bk_old' } } } as ListItem,
+      { ...item('new', listUri('r')), rkey: 'new', value: { ...item('new', listUri('r')).value, identifiers: { hiveId: 'bk_new' } } } as ListItem,
+    ],
+  }
+  const to = { hiveId: 'bk_new', title: 'New Title', authors: 'A\tB', identifiers: { isbn13: '9780441013593' } }
+
+  it('updates an item in place when the list lacks the new book', () => {
+    const list = { ...ranked, items: [ranked.items[0]!], value: { ...ranked.value, itemOrder: [itemUri('old')] } }
+    const writes = repointWrites(list, new Set(['bk_old']), to)
+    expect(writes).toEqual([
+      expect.objectContaining({
+        $type: 'com.atproto.repo.applyWrites#update',
+        collection: LIST_ITEM,
+        rkey: 'old',
+        value: expect.objectContaining({ identifiers: { hiveId: 'bk_new', isbn13: '9780441013593' }, title: 'New Title', mainCredit: 'A' }),
+      }),
+    ])
+  })
+
+  it('deletes the old item, and drops it from the order, when the list already has the new book', () => {
+    const writes = repointWrites(ranked, new Set(['bk_old']), to)
+    expect(writes.map((w) => w.$type.split('#')[1])).toEqual(['delete', 'update'])
+    expect((writes[1] as { value: { itemOrder: string[] } }).value.itemOrder).toEqual([itemUri('new')])
+  })
+
+  it('does nothing for lists without the old book', () => {
+    expect(repointWrites(ranked, new Set(['bk_absent']), to)).toEqual([])
   })
 })
