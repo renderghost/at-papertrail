@@ -71,6 +71,42 @@ export async function searchHive(q: string, { limit = 10, signal }: { limit?: nu
   return (res.books ?? []).filter((b) => typeof b?.id === 'string' && typeof b.title === 'string')
 }
 
+const validBooks = (books: HiveBook[] | undefined) => (books ?? []).filter((b) => typeof b?.id === 'string' && typeof b.title === 'string')
+
+/** BookHive's most-rated books in a genre, optionally in one language (#79). Editions of one work come one after another. */
+export async function getGenreBooks(
+  genre: string,
+  { language, limit = 100, offset = 0, signal }: { language?: string; limit?: number; offset?: number; signal?: AbortSignal } = {},
+): Promise<HiveBook[]> {
+  const res = await call<{ books?: HiveBook[] }>('searchBooks', { genre, language, limit, offset }, signal)
+  return validBooks(res.books)
+}
+
+export type GenreCount = { genre: string; count: number }
+export type TopAuthor = { author: string; bookCount: number; thumbnail?: string; avgRating?: number }
+export type Explore = { genres: GenreCount[]; topAuthors: TopAuthor[] }
+
+/** BookHive's explore data: its biggest genres and most-read authors, optionally in one language. */
+export async function getExplore(language?: string, signal?: AbortSignal): Promise<Explore> {
+  const res = await call<Partial<Explore>>('getExplore', { language }, signal)
+  return {
+    genres: (res.genres ?? []).filter((g) => typeof g?.genre === 'string'),
+    topAuthors: (res.topAuthors ?? []).filter((a) => typeof a?.author === 'string'),
+  }
+}
+
+/** Every genre with at least `minBooks` books, biggest first. */
+export async function listGenres({ limit = 60, minBooks = 500, signal }: { limit?: number; minBooks?: number; signal?: AbortSignal } = {}): Promise<GenreCount[]> {
+  const res = await call<{ genres?: GenreCount[] }>('listGenres', { limit, minBooks }, signal)
+  return (res.genres ?? []).filter((g) => typeof g?.genre === 'string')
+}
+
+/** The languages BookHive's catalogue has books in, as it names them ("English", "Spanish; Castilian"). */
+export async function getLanguages(signal?: AbortSignal): Promise<string[]> {
+  const res = await call<{ languages?: unknown[] }>('getLanguages', {}, signal)
+  return (res.languages ?? []).filter((l): l is string => typeof l === 'string')
+}
+
 /** A book with everyone's BookHive reviews, comments and recent activity; null if BookHive doesn't know it. */
 export async function getHiveBook(id: string, signal?: AbortSignal): Promise<HiveBookDetail | null> {
   try {

@@ -25,6 +25,9 @@ const ScanPage = lazy(() => import('./pages/Scan').then((m) => ({ default: m.Sca
 const SeriesPage = lazy(() => import('./pages/SeriesPage').then((m) => ({ default: m.SeriesPage })))
 const TwinsPage = lazy(() => import('./pages/Twins').then((m) => ({ default: m.TwinsPage })))
 const WantToReadPage = lazy(() => import('./pages/WantToRead').then((m) => ({ default: m.WantToReadPage })))
+const ExplorePage = lazy(() => import('./pages/Explore').then((m) => ({ default: m.ExplorePage })))
+const GenrePage = lazy(() => import('./pages/Explore').then((m) => ({ default: m.GenrePage })))
+const DiscoverPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.DiscoverPage })))
 
 function OnDemand({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Loading />}>{children}</Suspense>
@@ -78,6 +81,8 @@ function AppRoutes() {
         <Route path="shelves/:actor" element={<ListsPage />} />
         <Route path="shelves/:actor/:rkey" element={<ListPage />} />
         <Route path="switch" element={<OnDemand><SwitchPage /></OnDemand>} />
+        <Route path="explore" element={<OnDemand><ExplorePage /></OnDemand>} />
+        <Route path="explore/genres/:genre" element={<OnDemand><GenrePage /></OnDemand>} />
         <Route element={<RequireSession />}>
           {signedIn && <Route index element={<Library />} />}
           <Route path="add" element={<AddBook />} />
@@ -85,6 +90,7 @@ function AppRoutes() {
           <Route path="club" element={<BookClub />} />
           <Route path="twins" element={<OnDemand><TwinsPage /></OnDemand>} />
           <Route path="want-to-read" element={<OnDemand><WantToReadPage /></OnDemand>} />
+          <Route path="discover" element={<OnDemand><DiscoverPage /></OnDemand>} />
           <Route path="covered" element={<OnDemand><Covered /></OnDemand>} />
           <Route path="covered/:period" element={<OnDemand><Covered /></OnDemand>} />
           <Route path="import" element={<OnDemand><ImportPage /></OnDemand>} />

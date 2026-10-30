@@ -115,6 +115,33 @@ function commonest<T extends Edition>(editions: T[]): T {
   return bestEdition(agreed!)
 }
 
+/**
+ * Editions of one work across titles and languages: the same first author,
+ * and ratings counts within 2% of each other, since Goodreads counts ratings
+ * per work ("Harry Potter and the Philosopher's Stone", "… Sorcerer's Stone"
+ * and "Harry Potter e la pietra filosofale" all carry about 11.9 million).
+ * Little-read books merge by title only: two can share a count by chance.
+ */
+export function workGroups<T extends Edition & Pick<CatalogBook, 'authors'>>(books: T[]): T[][] {
+  const groups: { author: string; title: string; count: number; books: T[] }[] = []
+  for (const book of books) {
+    const author = normaliseTitle(firstAuthor(book.authors))
+    const title = workKey(book.title)
+    const count = book.ratingsCount ?? 0
+    const group = groups.find(
+      (g) => g.author === author && (g.title === title || (count >= 100 && g.count >= 100 && Math.abs(g.count - count) <= 0.02 * Math.max(g.count, count))),
+    )
+    if (group) group.books.push(book)
+    else groups.push({ author, title, count, books: [book] })
+  }
+  return groups.map((g) => g.books)
+}
+
+/** One edition per work, in the reader's language where there is one, in the order given. */
+export function distinctWorks<T extends Edition & Pick<CatalogBook, 'authors' | 'language'>>(books: T[], reader = readerLanguage()): T[] {
+  return workGroups(books).map((editions) => editionFor(editions, [reader, mainLanguage(editions)]))
+}
+
 export type SeriesGroup<T> = { series: string; books: T[] }
 
 /**

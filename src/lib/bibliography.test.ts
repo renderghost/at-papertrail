@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestEdition, editionFor, groupBibliography, inLanguage, isBy, mainLanguage, mergeEditions, readerLanguage, seriesOrder, seriesSlots, workKey } from './bibliography'
+import { bestEdition, distinctWorks, editionFor, groupBibliography, inLanguage, isBy, mainLanguage, mergeEditions, readerLanguage, seriesOrder, seriesSlots, workGroups, workKey } from './bibliography'
 
 describe('bibliography', () => {
   it('treats editions of one work as one', () => {
@@ -113,6 +113,29 @@ describe('bibliography', () => {
       'English',
     )
     expect(series[0]!.books.map((b) => b.title)).toEqual(['A Wizard of Earthsea', 'The Tombs of Atuan', 'The Earthsea Quartet'])
+  })
+
+  it('finds editions of one work across titles and languages by their shared ratings count', () => {
+    // Real shapes from BookHive's Fantasy genre listing.
+    const books = [
+      { title: "Harry Potter and the Philosopher's Stone", authors: 'J.K. Rowling', language: 'English', ratingsCount: 11891491 },
+      { title: "Harry Potter and the Sorcerer's Stone", authors: 'J.K. Rowling', language: 'English', ratingsCount: 11889183 },
+      { title: 'Harry Potter e la pietra filosofale', authors: 'J.K. Rowling', language: 'Italian', ratingsCount: 11839375 },
+      { title: "Harry Potter and the Philosopher's Stone", authors: 'J.K. Rowling', language: 'English', ratingsCount: 11890416 },
+      { title: 'Harry Potter and the Chamber of Secrets', authors: 'J.K. Rowling', language: 'English', ratingsCount: 4600000 },
+      { title: 'The Hobbit', authors: 'J.R.R. Tolkien', language: 'English', ratingsCount: 4590000 },
+      { title: 'Small Press Poems', authors: 'Jo Bloggs', ratingsCount: 12 },
+      { title: 'Other Small Poems', authors: 'Jo Bloggs', ratingsCount: 12 },
+    ]
+    expect(workGroups(books).map((g) => g.length)).toEqual([4, 1, 1, 1, 1])
+    expect(distinctWorks(books, 'English').map((b) => b.title)).toEqual([
+      "Harry Potter and the Philosopher's Stone",
+      'Harry Potter and the Chamber of Secrets',
+      'The Hobbit',
+      'Small Press Poems',
+      'Other Small Poems',
+    ])
+    expect(distinctWorks(books, 'Italian')[0]!.title).toBe('Harry Potter e la pietra filosofale')
   })
 
   it('matches any credited author', () => {
