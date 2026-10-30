@@ -206,7 +206,7 @@ p {
   background: var(--paper-sunk);
 }
 
-.nav a[aria-current='page'] {
+.nav a[aria-current] {
   color: var(--accent-ink);
   background: var(--ink);
 }
@@ -251,7 +251,7 @@ p {
     max-width: 96px;
   }
 
-  .nav a[aria-current='page'] {
+  .nav a[aria-current] {
     background: transparent;
     color: var(--accent);
   }
@@ -262,6 +262,87 @@ p {
 
   main.page {
     padding-bottom: calc(var(--nav-height) + 32px);
+  }
+}
+
+/* ——— Tabs: an area's features, the second and last level (#104) ——— */
+
+.tabs {
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.tabs-inner {
+  position: relative;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+.tabs a {
+  padding: 12px 10px 10px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tabs a:hover {
+  color: var(--ink);
+}
+
+.tabs a[aria-current] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  /* One row that scrolls sideways; the tab cut off at the edge says there's more. */
+  .tabs-inner {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs a {
+    flex: none;
+  }
+}
+
+/* Your account: the avatar opens a menu like ⋯ More. */
+.account-btn {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.account-btn:hover .avatar {
+  box-shadow: 0 0 0 2px var(--rule-strong);
+}
+
+.account-who {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 10px;
+  margin: 0 0 4px;
+  border-bottom: 1px solid var(--rule);
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+@supports (position-area: block-end) {
+  .account-btn + .account-menu {
+    position-area: block-end span-inline-start;
+    position-try-fallbacks: flip-inline;
+    margin-top: 6px;
   }
 }
 
@@ -2211,13 +2292,6 @@ p {
 
 /* ——— Import, export and the match fixer (M4a) ——— */
 
-.library-tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  margin: -8px 0 24px;
-}
-
 .file-input {
   font: inherit;
   max-width: 100%;
@@ -2569,11 +2643,6 @@ li.fix-item {
 }
 
 /* Taste twins and asking your network (#63, #64) */
-.page-actions {
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-
 .match-line {
   display: flex;
   flex-wrap: wrap;
@@ -2690,8 +2759,56 @@ a.chip:hover {
   color: var(--ink-2);
 }
 
-.because + .because {
-  margin-top: 8px;
+/* Library › Overview: Add a book, a search that opens Discover › Search (#104). */
+.add-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-search .search-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-search .search-input {
+  width: 100%;
+}
+
+/* Library › Manage: its tools, two by two (#104). */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tool-grid > li {
+  display: flex;
+}
+
+.tool-card {
+  flex: 1;
+  align-items: flex-start;
+}
+
+.tool-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--paper-sunk);
+  color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .tool-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ——— Cards: one book and one person component (#100) ——— */

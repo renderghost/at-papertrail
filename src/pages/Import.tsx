@@ -16,6 +16,7 @@ import { libraryIndex, matchAll, type MatchDeps, type RowMatch } from '../lib/im
 import { buildPlan, CHANGE_LABEL, summarise, type PlanItem, type Resolution } from '../lib/import/plan'
 import { clearUndoLog, existingListFor, loadUndoLog, runImport, saveUndoLog, undoImport, type RunResult, type UndoLog } from '../lib/import/run'
 import { ImportFileError, parseExport, SOURCE_NAME, type ImportRow, type ParsedExport } from '../lib/import/sources'
+import { PATHS } from '../lib/paths'
 import { useLists } from '../lib/useLists'
 import { useCanWrite } from '../lib/usePeople'
 
@@ -172,7 +173,9 @@ export function ImportPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Your library</p>
+          <p className="kicker">
+            <Link to={PATHS.manage}>Manage</Link>
+          </p>
           <h1>Bring your books</h1>
           <p className="lede">
             Import your Goodreads, StoryGraph or Hardcover library. It only fills gaps: nothing already in your library is
@@ -212,7 +215,7 @@ export function ImportPage() {
                 </div>
                 <p className="small muted">
                   From Goodreads, StoryGraph or Hardcover. The file is read here in your browser; only your books go to your PDS.
-                  Not exported yet? <Link to="/switch">How to export from each</Link>.
+                  Not exported yet? <Link to={PATHS.switch}>How to export from each</Link>.
                 </p>
                 {error && (
                   <div className="notice notice-error" role="alert">
@@ -284,7 +287,7 @@ export function ImportPage() {
               </div>
               <p className="muted">
                 bookhive.buzz only shows books in its catalogue. Find each one if you can; any you leave are saved as they
-                are, and you can match them later in <Link to="/fix">Fix matches</Link>.
+                are, and you can match them later in <Link to={PATHS.fix}>Fix matches</Link>.
               </p>
               <div className="table-wrap">
                 <table className="book-table unmatched-table">
@@ -416,12 +419,12 @@ export function ImportPage() {
           )}
           {summary.uncatalogued > 0 && !error && (
             <p className="muted">
-              {plural(summary.uncatalogued, 'book')} {summary.uncatalogued === 1 ? "isn't" : "aren't"} on BookHive yet. <Link to="/fix">Fix matches</Link> when you have a moment.
+              {plural(summary.uncatalogued, 'book')} {summary.uncatalogued === 1 ? "isn't" : "aren't"} on BookHive yet. <Link to={PATHS.fix}>Fix matches</Link> when you have a moment.
             </p>
           )}
           <div className="row">
-            <Link className="btn btn-primary" to="/">
-              Go to your library
+            <Link className="btn btn-primary" to={PATHS.books}>
+              See your books
             </Link>
             <button className="btn btn-quiet" onClick={reset}>
               Import another file

@@ -15,7 +15,7 @@ import { formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { repointListItems, type BookList } from '../lib/lists'
 import { createLimiter } from '../lib/pool'
-import { bookPath } from '../lib/paths'
+import { bookPath, PATHS } from '../lib/paths'
 import { useLists } from '../lib/useLists'
 
 /** Whether BookHive's catalogue knows a hiveId: its published record, else its API. */
@@ -84,7 +84,9 @@ export function FixPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Your library</p>
+          <p className="kicker">
+            <Link to={PATHS.manage}>Manage</Link>
+          </p>
           <h1>Fix matches</h1>
           <p className="lede">
             bookhive.buzz only shows books in its catalogue, and an import can leave a book in your library twice. Tidy both
@@ -153,7 +155,7 @@ export function FixPage() {
       {library.isSuccess && entries.length === 0 && (
         <Empty title="Nothing to fix">
           <p>
-            Your library is empty. <Link to="/import">Import one</Link> or <Link to="/add">add a book</Link>.
+            Your library is empty. <Link to={PATHS.import}>Import one</Link> or <Link to={PATHS.search}>add a book</Link>.
           </p>
         </Empty>
       )}

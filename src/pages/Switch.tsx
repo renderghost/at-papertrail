@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useMaybeSession } from '../lib/auth'
 import { useDocumentTitle } from '../lib/hooks'
-import { loginPath } from '../lib/paths'
+import { loginPath, PATHS } from '../lib/paths'
 
 const SERVICES = [
   {
@@ -37,7 +37,7 @@ const SERVICES = [
 export function SwitchPage() {
   useDocumentTitle('Switching to Papertrail')
   const signedIn = !!useMaybeSession()
-  const toImport = signedIn ? '/import' : loginPath('/import')
+  const toImport = signedIn ? PATHS.import : loginPath(PATHS.import)
 
   return (
     <article className="switch">
@@ -120,7 +120,7 @@ export function SwitchPage() {
             up there too.
           </li>
           <li>
-            <strong>You can leave any time.</strong> <Link to="/export">Export</Link> to JSON or a Goodreads CSV whenever you
+            <strong>You can leave any time.</strong> <Link to={PATHS.export}>Export</Link> to JSON or a Goodreads CSV whenever you
             like, or just use another app: your records stay where they are.
           </li>
         </ul>

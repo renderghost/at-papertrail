@@ -1,4 +1,4 @@
-import { Children, useEffect, useId, useRef, type ReactNode } from 'react'
+import { Children, useId, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { displayAuthors } from '../lib/bookhive/authors'
 import type { BookEntry, BookIdentifiers, CatalogBook } from '../lib/bookhive/types'
@@ -6,6 +6,7 @@ import { bookPath } from '../lib/paths'
 import { Avatar } from './bits'
 import { Cover } from './Cover'
 import { Icon } from './Icon'
+import { usePopoverPlacement } from './popover'
 import { QuickAdd } from './QuickAdd'
 
 /**
@@ -156,34 +157,8 @@ export function MoreMenu({ label, items }: { label: string; items: MoreItem[] })
   const trigger = useRef<HTMLButtonElement>(null)
   const panel = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const el = panel.current
-    if (!el) return
-    // Without CSS anchor positioning, place it from the button: under it, or over it near the bottom.
-    const place = (e: Event) => {
-      if ((e as ToggleEvent).newState !== 'open' || CSS.supports('position-area: block-end')) return
-      const r = trigger.current!.getBoundingClientRect()
-      const below = r.bottom < window.innerHeight * 0.6
-      el.style.top = below ? `${r.bottom + 4}px` : 'auto'
-      el.style.bottom = below ? 'auto' : `${window.innerHeight - r.top + 4}px`
-      const alignLeft = r.right < 220
-      el.style.left = alignLeft ? `${Math.max(8, r.left)}px` : 'auto'
-      el.style.right = alignLeft ? 'auto' : `${Math.max(8, window.innerWidth - r.right)}px`
-    }
-    // A fixed popover would drift from its button as the page scrolls: close it instead.
-    const close = () => el.hidePopover()
-    const watch = (e: Event) => {
-      if ((e as ToggleEvent).newState === 'open') window.addEventListener('scroll', close, { passive: true, once: true })
-      else window.removeEventListener('scroll', close)
-    }
-    el.addEventListener('beforetoggle', place)
-    el.addEventListener('toggle', watch)
-    return () => {
-      el.removeEventListener('beforetoggle', place)
-      el.removeEventListener('toggle', watch)
-      window.removeEventListener('scroll', close)
-    }
-  }, [items.length])
+  // A card scrolls with the page: a fixed menu would drift from it, so scrolling closes it.
+  usePopoverPlacement(trigger, panel, { closeOnScroll: true, key: items.length })
 
   if (!items.length) return null
   return (

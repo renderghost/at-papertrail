@@ -40,7 +40,8 @@ export type TasteMatch = {
 
 export type ReaderLike = { books: BookEntry[]; reviews?: ReviewEntry[] }
 
-function theirRating(entry: BookEntry, reviews: ReviewEntry[]): number | undefined {
+/** Their rating of a book: on their BookHive copy, else from a PopFeed review of it. */
+export function theirRating(entry: BookEntry, reviews: ReviewEntry[]): number | undefined {
   if (entry.value.stars) return entry.value.stars
   const review = reviews.find((r) => reviewMatches(r.value, { hiveId: entry.value.hiveId, identifiers: entry.value.identifiers }))
   return review?.value.rating || undefined

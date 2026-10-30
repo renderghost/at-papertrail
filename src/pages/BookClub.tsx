@@ -10,7 +10,7 @@ import { displayAuthors } from '../lib/bookhive/authors'
 import { displayName, formatDate, plural, truncate } from '../lib/format'
 import { useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
-import { bookPath } from '../lib/paths'
+import { bookPath, PATHS } from '../lib/paths'
 
 /** A Bluesky compose window, pre-filled to start the conversation. */
 function composeUrl(book: ClubBook): string {
@@ -30,19 +30,11 @@ export function BookClub() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Book club</p>
+          <p className="kicker">Friends</p>
           <h1>Who's on the same page</h1>
           <p className="lede">
             For every book you're reading, the people you follow who are reading it now or have read it before.
           </p>
-          <div className="row page-actions">
-            <Link to="/twins" className="btn btn-sm">
-              Readers like you
-            </Link>
-            <Link to="/want-to-read" className="btn btn-sm">
-              Your want-to-read list, asked
-            </Link>
-          </div>
         </div>
       </div>
 
@@ -55,7 +47,7 @@ export function BookClub() {
       ) : club.length === 0 ? (
         <Empty title="You're not reading anything right now">
           <p>Mark a book as Reading and your book club will gather here.</p>
-          <Link to="/add" className="btn btn-primary">
+          <Link to={PATHS.search} className="btn btn-primary">
             Find a book
           </Link>
         </Empty>

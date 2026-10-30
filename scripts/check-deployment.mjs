@@ -141,7 +141,7 @@ try {
 
 // 3. Routing: deep links serve the app; missing assets are real 404s.
 try {
-  const { res, body } = await get('/feed')
+  const { res, body } = await get('/friends/club')
   if (res.status === 200 && body.includes('<div id="root">')) pass('deep links serve the app')
   else fail('deep links serve the app', `HTTP ${res.status}`)
   const missing = await get('/assets/deployment-check-missing.js')

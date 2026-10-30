@@ -3,13 +3,14 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams,
 import { Loading } from './components/bits'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './lib/auth'
+import { MOVED, movedPath } from './lib/nav'
 import { bookPath, loginPath, safeNext } from './lib/paths'
 import { AddBook } from './pages/AddBook'
 import { AuthorPage } from './pages/AuthorPage'
 import { BookClub } from './pages/BookClub'
 import { BookPage } from './pages/BookPage'
 import { Feed } from './pages/Feed'
-import { Library } from './pages/Library'
+import { LibraryBooks, LibraryLists, Manage, Overview } from './pages/Library'
 import { ListPage, ListsPage } from './pages/Lists'
 import { Login } from './pages/Login'
 import { NotFound } from './pages/NotFound'
@@ -27,7 +28,10 @@ const TwinsPage = lazy(() => import('./pages/Twins').then((m) => ({ default: m.T
 const WantToReadPage = lazy(() => import('./pages/WantToRead').then((m) => ({ default: m.WantToReadPage })))
 const ExplorePage = lazy(() => import('./pages/Explore').then((m) => ({ default: m.ExplorePage })))
 const GenrePage = lazy(() => import('./pages/Explore').then((m) => ({ default: m.GenrePage })))
-const DiscoverPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.DiscoverPage })))
+const BecauseYouLovedPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.BecauseYouLovedPage })))
+const PickNextReadPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.PickNextReadPage })))
+const ContinueSeriesPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.ContinueSeriesPage })))
+const RecommendationsPage = lazy(() => import('./pages/Discover').then((m) => ({ default: m.RecommendationsPage })))
 
 function OnDemand({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Loading />}>{children}</Suspense>
@@ -57,6 +61,12 @@ function OldBookPath() {
   return <Navigate to={bookPath(hiveId)} replace />
 }
 
+/** Links from before the two-level navigation (#104): the same page at its new address, query and all. */
+function Moved({ move }: { move: { from: string; to: string } }) {
+  const { pathname, search, hash } = useLocation()
+  return <Navigate to={`${movedPath(pathname, move)}${search}${hash}`} replace />
+}
+
 function AppRoutes() {
   const { state } = useAuth()
   if (state.status === 'restoring') {
@@ -81,22 +91,36 @@ function AppRoutes() {
         <Route path="shelves/:actor" element={<ListsPage />} />
         <Route path="shelves/:actor/:rkey" element={<ListPage />} />
         <Route path="switch" element={<OnDemand><SwitchPage /></OnDemand>} />
-        <Route path="explore" element={<OnDemand><ExplorePage /></OnDemand>} />
-        <Route path="explore/genres/:genre" element={<OnDemand><GenrePage /></OnDemand>} />
+        <Route path="discover/browse" element={<OnDemand><ExplorePage /></OnDemand>} />
+        <Route path="discover/browse/genres/:genre" element={<OnDemand><GenrePage /></OnDemand>} />
+        {MOVED.map((move) => (
+          <Route key={move.from} path={`${move.from.slice(1)}/*`} element={<Moved move={move} />} />
+        ))}
+        <Route path="library" element={<Navigate to="/" replace />} />
         <Route element={<RequireSession />}>
-          {signedIn && <Route index element={<Library />} />}
-          <Route path="add" element={<AddBook />} />
-          <Route path="feed" element={<Feed />} />
-          <Route path="club" element={<BookClub />} />
-          <Route path="twins" element={<OnDemand><TwinsPage /></OnDemand>} />
-          <Route path="want-to-read" element={<OnDemand><WantToReadPage /></OnDemand>} />
-          <Route path="discover" element={<OnDemand><DiscoverPage /></OnDemand>} />
+          {/* Library */}
+          {signedIn && <Route index element={<Overview />} />}
+          <Route path="library/books" element={<LibraryBooks />} />
+          <Route path="library/lists" element={<LibraryLists />} />
+          <Route path="library/manage" element={<Manage />} />
+          <Route path="library/manage/scan" element={<OnDemand><ScanPage /></OnDemand>} />
+          <Route path="library/manage/import" element={<OnDemand><ImportPage /></OnDemand>} />
+          <Route path="library/manage/export" element={<OnDemand><ExportPage /></OnDemand>} />
+          <Route path="library/manage/fix" element={<OnDemand><FixPage /></OnDemand>} />
+          {/* Friends */}
+          <Route path="friends" element={<Feed />} />
+          <Route path="friends/club" element={<BookClub />} />
+          <Route path="friends/like-you" element={<OnDemand><TwinsPage /></OnDemand>} />
+          <Route path="friends/ask-around" element={<OnDemand><WantToReadPage /></OnDemand>} />
+          {/* Discover; Browse all is public, above */}
+          <Route path="discover" element={<OnDemand><BecauseYouLovedPage /></OnDemand>} />
+          <Route path="discover/next-read" element={<OnDemand><PickNextReadPage /></OnDemand>} />
+          <Route path="discover/series" element={<OnDemand><ContinueSeriesPage /></OnDemand>} />
+          <Route path="discover/recommendations" element={<OnDemand><RecommendationsPage /></OnDemand>} />
+          <Route path="discover/search" element={<AddBook />} />
+          {/* Covered */}
           <Route path="covered" element={<OnDemand><Covered /></OnDemand>} />
           <Route path="covered/:period" element={<OnDemand><Covered /></OnDemand>} />
-          <Route path="import" element={<OnDemand><ImportPage /></OnDemand>} />
-          <Route path="export" element={<OnDemand><ExportPage /></OnDemand>} />
-          <Route path="fix" element={<OnDemand><FixPage /></OnDemand>} />
-          <Route path="scan" element={<OnDemand><ScanPage /></OnDemand>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

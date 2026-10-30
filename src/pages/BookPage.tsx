@@ -23,7 +23,7 @@ import { FEATURES } from '../lib/features'
 import { displayName, formatDate, plural } from '../lib/format'
 import { useBookWrites, useCatalog, useDocumentTitle, useHiveBook, useMyLibrary } from '../lib/hooks'
 import { useNetwork, type Reader } from '../lib/network'
-import { bookPath, loginPath, profilePath, seriesPath } from '../lib/paths'
+import { bookPath, loginPath, PATHS, profilePath, seriesPath } from '../lib/paths'
 import { reviewMatches, type ReviewEntry } from '../lib/popfeed'
 import { lookupBookDetails, newBookRecord } from '../lib/search'
 import { askUrl, describeTake, networkTake, stoppedAt, trustScores } from '../lib/taste'
@@ -77,7 +77,7 @@ export function BookPage() {
       <Empty title="We couldn't find this book">
         <p>It isn't in {me ? 'your library or ' : ''}BookHive's catalogue.</p>
         {me && (
-          <Link className="btn" to="/add">
+          <Link className="btn" to={PATHS.search}>
             Search for it
           </Link>
         )}

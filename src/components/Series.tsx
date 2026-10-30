@@ -8,6 +8,7 @@ import { useMyLibrary } from '../lib/hooks'
 import { bookPath, seriesPath } from '../lib/paths'
 import { findInSeries, hasRead, seriesOf, seriesOrder, seriesProgress, type SeriesBook } from '../lib/series'
 import { useAuthorSeries } from '../lib/usePeople'
+import { Empty, Loading } from './bits'
 import { BookCard, CardGrid } from './Cards'
 import { QuickAdd } from './QuickAdd'
 
@@ -94,7 +95,7 @@ function SeriesItem({ item, current, next }: { item: SeriesBook; current: boolea
 }
 
 /**
- * "Continue a series" on your library (#61): the next unread book in each
+ * Discover › Continue a series (#61, #104): the next unread book in each
  * series you've finished something from, most recent first.
  */
 export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
@@ -124,7 +125,7 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
       const key = `${s.author}|${s.title}`.toLowerCase()
       seen.set(key, { title: s.title, author: s.author, furthest: Math.max(order, seen.get(key)?.furthest ?? 0) })
     }
-    return [...seen.values()].slice(0, 8)
+    return [...seen.values()].slice(0, 12)
   }, [catalogs])
   // Only as much of each author's list as it takes to find the next book.
   const queryClient = useQueryClient()
@@ -152,13 +153,18 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
     return [{ series: s, next }]
   })
 
-  if (!items.length) return null
+  const looking = catalogs.some((q) => q.isPending) || found.some((q) => q.isPending)
+  if (!items.length) {
+    return looking ? (
+      <Loading>Looking through your series…</Loading>
+    ) : (
+      <Empty title="No series to continue">
+        <p>Finish a book that's part of a series, and the next one waits for you here.</p>
+      </Empty>
+    )
+  }
   return (
-    <section className="section">
-      <div className="section-title">
-        <h2>Continue a series</h2>
-        <span className="count">{items.length}</span>
-      </div>
+    <>
       <CardGrid size="large" className="continue-series" label="Continue a series">
         {items.map(({ series: s, next }) => (
           <BookCard
@@ -173,6 +179,7 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
           />
         ))}
       </CardGrid>
-    </section>
+      {looking && <Loading>Still looking…</Loading>}
+    </>
   )
 }
