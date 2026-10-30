@@ -2278,20 +2278,12 @@ p {
   padding: 0;
 }
 
-.unmatched,
 li.fix-item {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px 0;
   border-top: 1px solid var(--rule);
-}
-
-.unmatched-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .unmatched strong,
@@ -2351,14 +2343,6 @@ li.fix-item {
   overflow-y: auto;
 }
 
-.change-list li {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  padding: 8px 0;
-  border-top: 1px solid var(--rule);
-}
 
 .undo-panel p {
   margin: 0;
@@ -3122,4 +3106,10 @@ a.chip:hover {
 
 .fix-picker td {
   background: var(--paper-raised);
+}
+
+.unmatched-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }

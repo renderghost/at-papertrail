@@ -286,11 +286,25 @@ export function ImportPage() {
                 bookhive.buzz only shows books in its catalogue. Find each one if you can; any you leave are saved as they
                 are, and you can match them later in <Link to="/fix">Fix matches</Link>.
               </p>
-              <ul className="unmatched-list">
-                {unmatched.map(({ row, suggestions }) => (
-                  <UnmatchedRow key={row.line} row={row} suggestions={suggestions} resolution={resolutions.get(row.line)} onResolve={(r) => resolve(row.line, r)} />
-                ))}
-              </ul>
+              <div className="table-wrap">
+                <table className="book-table unmatched-table">
+                  <caption className="visually-hidden">Books from your file that BookHive's catalogue doesn't have</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Title</th>
+                      <th scope="col">Author</th>
+                      <th scope="col">Line</th>
+                      <th scope="col">Will be</th>
+                      <th scope="col">
+                        <span className="visually-hidden">Changes</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  {unmatched.map(({ row, suggestions }) => (
+                    <UnmatchedRow key={row.line} row={row} suggestions={suggestions} resolution={resolutions.get(row.line)} onResolve={(r) => resolve(row.line, r)} />
+                  ))}
+                </table>
+              </div>
             </section>
           )}
 
@@ -481,47 +495,52 @@ function UnmatchedRow({
   const chosen = resolution && resolution !== 'skip' ? resolution.book : null
   const choice = resolution === 'skip' ? 'Skipped' : chosen ? `Matched to ${chosen.title}` : 'Saved as it is'
   return (
-    <li className="unmatched">
-      <div className="unmatched-head">
-        <div>
+    <tbody className="unmatched">
+      <tr>
+        <th scope="row">
           <strong>{row.title}</strong>
-          <div className="small muted">
-            {row.authors.join(', ')} · line {row.line}
+        </th>
+        <td>{row.authors.join(', ')}</td>
+        <td className="muted">{row.line}</td>
+        <td className={chosen ? undefined : 'muted'}>{choice}</td>
+        <td>
+          <div className="row unmatched-actions">
+            <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? 'Close' : 'Find on BookHive'}
+            </button>
+            {resolution !== undefined && resolution !== 'skip' && resolution.book && (
+              <button className="btn btn-sm btn-quiet" onClick={() => onResolve({ book: null })}>
+                Save as it is
+              </button>
+            )}
+            {resolution === 'skip' ? (
+              <button className="btn btn-sm btn-quiet" onClick={() => onResolve({ book: null })}>
+                Don't skip
+              </button>
+            ) : (
+              <button className="btn btn-sm btn-quiet" onClick={() => onResolve('skip')}>
+                Skip this book
+              </button>
+            )}
           </div>
-        </div>
-        <span className={`small ${chosen ? '' : 'muted'}`}>{choice}</span>
-      </div>
-      <div className="row">
-        <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Close' : 'Find on BookHive'}
-        </button>
-        {resolution !== undefined && resolution !== 'skip' && resolution.book && (
-          <button className="btn btn-sm btn-quiet" onClick={() => onResolve({ book: null })}>
-            Save as it is
-          </button>
-        )}
-        {resolution === 'skip' ? (
-          <button className="btn btn-sm btn-quiet" onClick={() => onResolve({ book: null })}>
-            Don't skip
-          </button>
-        ) : (
-          <button className="btn btn-sm btn-quiet" onClick={() => onResolve('skip')}>
-            Skip this book
-          </button>
-        )}
-      </div>
+        </td>
+      </tr>
       {open && (
-        <CatalogPicker
-          initialQuery={`${row.bareTitle} ${row.authors[0] ?? ''}`.trim()}
-          suggestions={suggestions}
-          chosenId={chosen?.id}
-          onPick={(book) => {
-            onResolve({ book })
-            setOpen(false)
-          }}
-        />
+        <tr className="fix-picker">
+          <td colSpan={5}>
+            <CatalogPicker
+              initialQuery={`${row.bareTitle} ${row.authors[0] ?? ''}`.trim()}
+              suggestions={suggestions}
+              chosenId={chosen?.id}
+              onPick={(book) => {
+                onResolve({ book })
+                setOpen(false)
+              }}
+            />
+          </td>
+        </tr>
       )}
-    </li>
+    </tbody>
   )
 }
 
@@ -548,19 +567,30 @@ function ChangeList({ plan }: { plan: PlanItem[] }) {
   return (
     <details className="section change-details">
       <summary>See every change ({changes.length.toLocaleString('en-GB')})</summary>
-      <ul className="change-list">
-        {changes.map((p) => {
-          const value = p.kind === 'create' ? p.record : p.next
-          return (
-            <li key={p.kind === 'create' ? `c${p.rows[0]!.line}` : p.entry.uri}>
-              <span>
-                <strong>{value.title}</strong> <span className="muted">{displayAuthors(value.authors)}</span>
-              </span>
-              <span className="small">{describe(p)}</span>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="table-wrap change-list">
+        <table className="book-table">
+          <caption className="visually-hidden">Every change the import will make</caption>
+          <thead>
+            <tr>
+              <th scope="col">Title</th>
+              <th scope="col">Author</th>
+              <th scope="col">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {changes.map((p) => {
+              const value = p.kind === 'create' ? p.record : p.next
+              return (
+                <tr key={p.kind === 'create' ? `c${p.rows[0]!.line}` : p.entry.uri}>
+                  <th scope="row">{value.title}</th>
+                  <td>{displayAuthors(value.authors)}</td>
+                  <td>{describe(p)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </details>
   )
 }
