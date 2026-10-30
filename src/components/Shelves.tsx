@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { STATUS, type BookEntry, type BookStatus } from '../lib/bookhive/types'
 import { Empty } from './bits'
-import { BookTile } from './BookTile'
+import { BookTile, type ShelfView } from './BookTile'
 
 type Filter = BookStatus | 'all'
 
@@ -30,8 +30,28 @@ function activity(e: BookEntry): number {
   )
 }
 
+const VIEW_KEY = 'papertrail-shelf-view'
+
+function storedView(): ShelfView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'covers' ? 'covers' : 'details'
+  } catch {
+    return 'details'
+  }
+}
+
 export function Shelves({ entries, emptyMessage }: { entries: BookEntry[]; emptyMessage: string }) {
   const [filter, setFilter] = useState<Filter>('all')
+  // Covers only, or with title, author and stars: the reader's choice, remembered in this browser (#100).
+  const [view, setView] = useState<ShelfView>(storedView)
+  const chooseView = (next: ShelfView) => {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // Private mode: it just won't be remembered.
+    }
+  }
   const [sort, setSort] = useState<Sort>('recent')
   const [owned, setOwned] = useState<Owned>('any')
   const ownedCounts = useMemo(() => ({ owned: entries.filter(isOwned).length, unread: entries.filter(ownedUnread).length }), [entries])
@@ -83,23 +103,33 @@ export function Shelves({ entries, emptyMessage }: { entries: BookEntry[]; empty
             </div>
           )}
         </div>
-        <label className="row small muted">
-          <span>Sort</span>
+        <div className="row shelf-view">
+          <div className="chips" role="group" aria-label="Show">
+            <button className="chip" aria-pressed={view === 'covers'} onClick={() => chooseView('covers')}>
+              Covers
+            </button>
+            <button className="chip" aria-pressed={view === 'details'} onClick={() => chooseView('details')}>
+              Details
+            </button>
+          </div>
+          <label className="row small muted">
+            <span>Sort</span>
           <select className="select" style={{ minHeight: 34, padding: '4px 8px', width: 'auto' }} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
             <option value="recent">Recent activity</option>
             <option value="title">Title</option>
             <option value="rating">Rating</option>
           </select>
-        </label>
+          </label>
+        </div>
       </div>
       {shown.length === 0 ? (
         <Empty title="Nothing here yet">
           <p>{emptyMessage}</p>
         </Empty>
       ) : (
-        <div className="shelf">
+        <div className={`shelf shelf-${view}`}>
           {shown.map((e) => (
-            <BookTile key={e.uri} entry={e} />
+            <BookTile key={e.uri} entry={e} view={view} />
           ))}
         </div>
       )}

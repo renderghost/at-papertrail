@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Empty, ErrorNote, Loading } from '../components/bits'
 import { ReadingCard } from '../components/BookTile'
+import { CardGrid } from '../components/Cards'
 import { Icon } from '../components/Icon'
 import { ListsGrid } from '../components/Lists'
 import { ContinueSeries } from '../components/Series'
@@ -91,11 +92,11 @@ export function Library() {
                 <h2>Currently reading</h2>
                 <span className="count">{reading.length}</span>
               </div>
-              <div className="reading-list">
+              <CardGrid size="large" className="reading-list" label="Currently reading">
                 {reading.map((e) => (
                   <ReadingCard key={e.uri} entry={e} />
                 ))}
-              </div>
+              </CardGrid>
             </section>
           )}
           <ContinueSeries entries={entries} />

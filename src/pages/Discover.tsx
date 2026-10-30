@@ -2,19 +2,17 @@ import { useQueries } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Empty, ErrorNote, Loading } from '../components/bits'
-import { Cover } from '../components/Cover'
-import { QuickAdd } from '../components/QuickAdd'
+import { BookCard, CardGrid } from '../components/Cards'
 import { useSession } from '../lib/auth'
 import { readerLanguage } from '../lib/bibliography'
 import { getAuthorBooks, getGenreBooks } from '../lib/bookhive/api'
-import { displayAuthors, firstAuthor } from '../lib/bookhive/authors'
+import { firstAuthor } from '../lib/bookhive/authors'
 import { fetchCatalogBook } from '../lib/bookhive/catalog'
 import { STATUS, type BookEntry } from '../lib/bookhive/types'
 import { excluded, loadNotForMe, recommendFor, saveNotForMe, seedsFrom, telling, type Recommendation } from '../lib/discover'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
 import { OCCASIONS, pagesPerDay, pickFor, surprise, type Candidate } from '../lib/nextRead'
-import { bookPath } from '../lib/paths'
 import { copiesOf, networkIndex, networkTake, tasteTwins } from '../lib/taste'
 
 const HOUR = 60 * 60 * 1000
@@ -117,9 +115,9 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
             <input type="checkbox" checked={ownedFirst} onChange={(e) => setOwnedFirst(e.target.checked)} /> Books I own first
           </label>
           {surprised ? (
-            <ul className="picks">
+            <CardGrid size="large" className="picks" label="Your surprise">
               <PickCard candidate={surprised} why={['picked at random, likelier the better it is rated']} />
-            </ul>
+            </CardGrid>
           ) : occasion ? (
             !ready ? (
               <Loading>Weighing up your list…</Loading>
@@ -127,11 +125,11 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
               <>
                 <p className="small muted occasion-blurb">{occasion.blurb}.</p>
                 {result!.note && <p className="small">{result!.note}</p>}
-                <ul className="picks">
+                <CardGrid size="large" className="picks" label={`For a ${occasion.label.toLowerCase()}`}>
                   {result!.picks.map((p) => (
                     <PickCard key={p.candidate.entry.uri} candidate={p.candidate} why={p.why} />
                   ))}
-                </ul>
+                </CardGrid>
               </>
             )
           ) : (
@@ -146,18 +144,11 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
 function PickCard({ candidate: { entry, catalog }, why }: { candidate: Candidate; why: string[] }) {
   const v = entry.value
   return (
-    <li>
-      <Link to={bookPath(v.hiveId)} state={{ entry }} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
-      </Link>
-      <div className="pick-body">
-        <Link className="name" to={bookPath(v.hiveId)} state={{ entry }}>
-          {v.title}
-        </Link>
-        <div className="small muted">{displayAuthors(v.authors)}</div>
-        <p className="small why">{why.length ? why.join(' · ') : catalog?.numPages ? `${catalog.numPages} pages` : 'On your list'}</p>
-      </div>
-    </li>
+    <BookCard
+      book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, catalog, entry }}
+      state={{ entry }}
+      context={<p className="why">{why.length ? why.join(' · ') : catalog?.numPages ? `${catalog.numPages} pages` : 'On your list'}</p>}
+    />
   )
 }
 
@@ -222,11 +213,11 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
             {recs.length === 0 ? (
               <p className="small muted">{loading ? 'Looking…' : 'Nothing new to suggest yet.'}</p>
             ) : (
-              <ul className="picks">
+              <CardGrid size="compact" className="picks" label={`Because you loved ${seed.value.title}`}>
                 {recs.map((r) => (
                   <RecommendationCard key={r.hiveId} rec={r} onDismiss={() => dismiss(r.hiveId)} />
                 ))}
-              </ul>
+              </CardGrid>
             )}
           </div>
         ))
@@ -237,23 +228,11 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
 
 function RecommendationCard({ rec, onDismiss }: { rec: Recommendation; onDismiss: () => void }) {
   return (
-    <li>
-      <Link to={bookPath(rec.hiveId)} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={rec.hiveId} title={rec.title} authors={rec.authors} fallbackUrl={rec.catalog?.cover ?? rec.catalog?.thumbnail} size="sm" />
-      </Link>
-      <div className="pick-body">
-        <Link className="name" to={bookPath(rec.hiveId)}>
-          {rec.title}
-        </Link>
-        <div className="small muted">{displayAuthors(rec.authors)}</div>
-        <p className="small why">{rec.why}</p>
-        <div className="row">
-          <QuickAdd book={{ hiveId: rec.hiveId, title: rec.title, authors: rec.authors, identifiers: rec.identifiers, catalog: rec.catalog }} />
-          <button type="button" className="btn btn-sm btn-quiet" onClick={onDismiss} aria-label={`Not for me: ${rec.title}`}>
-            Not for me
-          </button>
-        </div>
-      </div>
-    </li>
+    <BookCard
+      size="compact"
+      book={{ hiveId: rec.hiveId, title: rec.title, authors: rec.authors, identifiers: rec.identifiers, catalog: rec.catalog }}
+      context={<p className="why">{rec.why}</p>}
+      more={[{ label: 'Not for me', onSelect: onDismiss }]}
+    />
   )
 }

@@ -2,18 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Empty, ErrorNote, Loading, Stars } from '../components/bits'
-import { Cover } from '../components/Cover'
-import { QuickAdd } from '../components/QuickAdd'
+import { BookCard, CardGrid, PersonCard } from '../components/Cards'
 import { useMaybeSession } from '../lib/auth'
 import { distinctWorks, inLanguage, readerLanguage } from '../lib/bibliography'
 import { sameBookKeys } from '../lib/bookclub'
 import { getExplore, getGenreBooks, getLanguages, listGenres, type HiveBook } from '../lib/bookhive/api'
-import { displayAuthors } from '../lib/bookhive/authors'
 import type { BookEntry } from '../lib/bookhive/types'
 import { displayName, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork, type Reader } from '../lib/network'
-import { authorPath, bookPath } from '../lib/paths'
+import { authorPath } from '../lib/paths'
 import { LOVED } from '../lib/taste'
 
 const HOUR = 60 * 60 * 1000
@@ -105,22 +103,22 @@ export function ExplorePage() {
           <div className="section-title">
             <h2>Most-read authors</h2>
           </div>
-          <ul className="top-authors">
+          <CardGrid size="compact" className="top-authors" label="Most-read authors">
             {explore.data.topAuthors.map((a) => (
-              <li key={a.author}>
-                {a.thumbnail?.startsWith('https://') ? <img src={a.thumbnail} alt="" width={44} height={44} loading="lazy" /> : <span className="avatar avatar-fallback">{a.author.charAt(0)}</span>}
-                <div>
-                  <Link className="name" to={authorPath(a.author)}>
-                    {a.author}
-                  </Link>
-                  <div className="small muted">
+              <PersonCard
+                key={a.author}
+                size="compact"
+                person={{ name: a.author, ...(a.thumbnail?.startsWith('https://') ? { avatar: a.thumbnail } : {}) }}
+                to={authorPath(a.author)}
+                context={
+                  <p>
                     {plural(a.bookCount, 'book')}
-                    {a.avgRating ? ` · ${(a.avgRating / 10).toFixed(1)} stars on average` : ''}
-                  </div>
-                </div>
-              </li>
+                    {a.avgRating ? ` · ${(a.avgRating / 10).toFixed(1)} stars` : ''}
+                  </p>
+                }
+              />
             ))}
-          </ul>
+          </CardGrid>
         </section>
       )}
     </>
@@ -162,29 +160,24 @@ function NetworkPicks({ did }: { did: string }) {
         <h2>Loved in your network</h2>
         <span className="count">the past year</span>
       </div>
-      <ul className="author-books">
+      <CardGrid size="compact" className="network-picks" label="Loved in your network">
         {picks.map(({ book, readers, average }) => {
           const v = book.value
           return (
-            <li key={book.uri}>
-              <Link to={bookPath(v.hiveId)}>
-                <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={book} size="md" />
-              </Link>
-              <div className="author-book-body">
-                <Link className="name" to={bookPath(v.hiveId)}>
-                  {v.title}
-                </Link>
-                <div className="small muted">{displayAuthors(v.authors)}</div>
-                <div className="small">
+            <BookCard
+              key={book.uri}
+              size="compact"
+              book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry: book }}
+              context={
+                <p>
                   Loved by {displayName(readers[0]!.profile)}
                   {readers.length > 1 ? ` and ${plural(readers.length - 1, 'other')}` : ''} <Stars stars={Math.round(average)} size={12} />
-                </div>
-                <QuickAdd book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, catalog: null }} />
-              </div>
-            </li>
+                </p>
+              }
+            />
           )
         })}
-      </ul>
+      </CardGrid>
     </section>
   )
 }
@@ -222,32 +215,23 @@ export function GenrePage() {
           <p>Try every language.</p>
         </Empty>
       ) : (
-        <HiveGrid books={works} />
+        <HiveGrid books={works} label={`Most-read ${genre.toLowerCase()}`} />
       )}
     </>
   )
 }
 
-export function HiveGrid({ books }: { books: HiveBook[] }) {
+export function HiveGrid({ books, label }: { books: HiveBook[]; label?: string }) {
   return (
-    <ul className="author-books">
+    <CardGrid size="compact" className="genre-books" label={label}>
       {books.map((b) => (
-        <li key={b.id}>
-          <Link to={bookPath(b.id)}>
-            <Cover hiveId={b.id} title={b.title} authors={b.authors} fallbackUrl={b.cover ?? b.thumbnail} size="md" />
-          </Link>
-          <div className="author-book-body">
-            <Link className="name" to={bookPath(b.id)}>
-              {b.title}
-            </Link>
-            <div className="small muted">
-              <Link to={authorPath(b.authors.split('\t')[0]!)}>{displayAuthors(b.authors)}</Link>
-            </div>
-            {b.rating ? <div className="small muted">{(b.rating / 1000).toFixed(2)} average</div> : null}
-            <QuickAdd book={{ hiveId: b.id, title: b.title, authors: b.authors, identifiers: b.identifiers, catalog: b }} />
-          </div>
-        </li>
+        <BookCard
+          key={b.id}
+          size="compact"
+          book={{ hiveId: b.id, title: b.title, authors: b.authors, identifiers: b.identifiers, catalog: b }}
+          context={b.rating ? <p>{(b.rating / 1000).toFixed(2)} average</p> : undefined}
+        />
       ))}
-    </ul>
+    </CardGrid>
   )
 }

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { Avatar, Empty, ErrorNote, Loading } from '../components/bits'
+import { Empty, ErrorNote, Loading } from '../components/bits'
+import { CardGrid, PersonCard } from '../components/Cards'
 import { Cover } from '../components/Cover'
 import { NetworkScan } from '../components/NetworkScan'
 import { MatchLine } from '../components/Taste'
@@ -8,7 +8,7 @@ import { useSession } from '../lib/auth'
 import { displayName } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
-import { bookPath, profilePath } from '../lib/paths'
+import { profilePath } from '../lib/paths'
 import { tasteTwins } from '../lib/taste'
 
 /** Readers most like you (#63): the people you follow, ranked by how alike your reading is. */
@@ -45,28 +45,25 @@ export function TwinsPage() {
           </Empty>
         )
       ) : (
-        <ol className="members twins">
+        <CardGrid size="large" className="twins" label="Readers like you">
           {twins.map(({ reader, match }) => (
-            <li key={reader.profile.did} className="member">
-              <Avatar profile={reader.profile} size={44} />
-              <div className="body">
-                <Link className="name" to={profilePath(reader.profile.handle)}>
-                  {displayName(reader.profile)}
-                </Link>
-                <MatchLine match={match} />
-                {match.bothLoved.length > 0 && (
-                  <div className="twin-books" aria-label="Books you both loved">
-                    {match.bothLoved.slice(0, 6).map((s) => (
-                      <Link key={s.mine.uri} to={bookPath(s.mine.value.hiveId)} title={s.mine.value.title}>
-                        <Cover hiveId={s.mine.value.hiveId} title={s.mine.value.title} authors={s.mine.value.authors} entry={s.mine} size="xs" />
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </li>
+            <PersonCard
+              key={reader.profile.did}
+              person={{ name: displayName(reader.profile), handle: reader.profile.handle, avatar: reader.profile.avatar }}
+              to={profilePath(reader.profile.handle)}
+              context={<MatchLine match={match} />}
+              more={[{ label: 'Open on Bluesky', href: `https://bsky.app/profile/${reader.profile.handle}` }]}
+            >
+              {match.bothLoved.length > 0 && (
+                <div className="twin-books" aria-label="Books you both loved">
+                  {match.bothLoved.slice(0, 5).map((s) => (
+                    <Cover key={s.mine.uri} hiveId={s.mine.value.hiveId} title={s.mine.value.title} authors={s.mine.value.authors} entry={s.mine} size="xs" />
+                  ))}
+                </div>
+              )}
+            </PersonCard>
           ))}
-        </ol>
+        </CardGrid>
       )}
     </>
   )

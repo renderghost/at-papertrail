@@ -742,17 +742,37 @@ p {
 
 /* ——— Shelves (library grid) ——— */
 
+/* Never more than 5 across, with minimal gaps (#100). */
 .shelf {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 28px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(max(120px, calc((100% - 4 * 16px) / 5)), 1fr));
+  gap: 20px 16px;
+}
+
+.shelf-covers {
+  grid-template-columns: repeat(auto-fill, minmax(max(96px, calc((100% - 4 * 8px) / 5)), 1fr));
+  gap: 8px;
 }
 
 @media (max-width: 480px) {
   .shelf {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
   }
+
+  .shelf-covers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+}
+
+.shelf-view {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cover-fill {
+  width: 100%;
 }
 
 .tile {
@@ -791,18 +811,6 @@ p {
 }
 
 /* ——— Currently reading strip ——— */
-
-.reading-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 480px) {
-  .reading-list {
-    grid-template-columns: 1fr;
-  }
-}
 
 .reading-card {
   display: flex;
@@ -981,14 +989,55 @@ p {
   margin: 0;
   padding: 0;
   max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.feed-item {
+/* A person card, with the book inset (#100). */
+.feed-entry {
   display: grid;
-  grid-template-columns: 40px 1fr 64px;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 14px;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 16px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.feed-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feed-body > .book-card-embed {
+  align-self: stretch;
+  margin-top: 2px;
+}
+
+.feed-entry .who {
+  margin: 0;
+}
+
+.feed-entry .who a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.feed-entry .who a:hover {
+  text-decoration: underline;
+}
+
+.feed-entry .when {
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+
+.feed-entry .review {
+  margin: 0;
 }
 
 .feed-item .who {
@@ -2071,43 +2120,6 @@ p {
   overflow-wrap: anywhere;
 }
 
-.author-books {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 24px 16px;
-}
-
-.author-books li {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.author-books .cover-md {
-  width: 100%;
-}
-
-.author-book-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
-}
-
-.author-book-body .name {
-  font-weight: 600;
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.author-book-body a.name:hover {
-  text-decoration: underline;
-}
-
 .claim {
   flex-basis: 100%;
   margin-top: 4px;
@@ -2490,85 +2502,8 @@ p {
   margin: 0;
 }
 
-.series-strip {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 8px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 132px;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-}
-
-.series-strip li {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  scroll-snap-align: start;
-  padding: 8px;
-  border-radius: var(--radius);
-}
-
-.series-strip li.current {
-  background: var(--paper-sunk);
-}
-
-.series-strip .name,
-.continue-series .name,
-.series-books .name {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.continue-series {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.continue-series li,
-.series-books li {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.continue-body,
-.series-book-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
 .series-progress {
   margin-top: 10px;
-  font-weight: 500;
-}
-
-.series-books {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.series-books li {
-  padding: 14px 0;
-  border-top: 1px solid var(--rule);
-}
-
-.series-books li.next {
-  box-shadow: inset 3px 0 0 var(--accent);
-  padding-left: 12px;
-}
-
-.series-books li.extra .name {
   font-weight: 500;
 }
 
@@ -2801,36 +2736,6 @@ a.chip:hover {
   border-color: var(--ink);
 }
 
-.top-authors {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.top-authors li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.top-authors img,
-.top-authors .avatar {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.top-authors .name {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
 .occasions {
   display: flex;
   flex-wrap: wrap;
@@ -2842,34 +2747,6 @@ a.chip:hover {
   margin: 12px 0 0;
 }
 
-.picks {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.picks li {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.pick-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.pick-body .name {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
 .why {
   margin: 2px 0 4px;
   color: var(--ink-2);
@@ -2877,4 +2754,317 @@ a.chip:hover {
 
 .because + .because {
   margin-top: 8px;
+}
+
+/* ——— Cards: one book and one person component (#100) ——— */
+
+.card-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.card-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.card-grid > li > .card {
+  flex: 1;
+}
+
+/* Never more than 3 (large) or 5 (compact) across; fewer when cards would get too narrow. */
+.card-grid-large {
+  grid-template-columns: repeat(auto-fill, minmax(max(280px, calc((100% - 24px) / 3)), 1fr));
+}
+
+.card-grid-compact {
+  grid-template-columns: repeat(auto-fill, minmax(max(150px, calc((100% - 48px) / 5)), 1fr));
+}
+
+.card-grid-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 560px) {
+  .card-grid-large {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.card {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  min-width: 0;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.card:has(.card-link:hover) {
+  border-color: var(--ink);
+}
+
+.card:has(.card-link:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The title is the card's one link, stretched over it; every other control sits above. */
+.card .card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card .card-link:focus-visible {
+  outline: none;
+}
+
+.card .card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.card :is(a:not(.card-link), button, input, select, label) {
+  position: relative;
+  z-index: 1;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Nested content (reviews, the people who read it) sits above the card's link, so its text can be selected. */
+.card-children {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.card-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-context {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.card-context p {
+  margin: 0;
+}
+
+.card-context a {
+  color: inherit;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.card-actions:has(> .more-btn:only-child) {
+  justify-content: flex-end;
+}
+
+.card-actions .quick-add .row {
+  flex-wrap: nowrap;
+}
+
+.more-btn {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+}
+
+.book-card .cover {
+  width: 64px;
+}
+
+/* Compact: vertical, the cover on top. */
+.book-card-compact,
+.person-card-compact {
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+.book-card-compact .cover {
+  width: 100%;
+}
+
+.book-card-compact .card-title,
+.person-card-compact .card-title {
+  font-size: 0.98rem;
+}
+
+/* A book inset in a feed entry: its own, quieter shape. */
+.book-card-embed {
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--paper-sunk);
+  border-color: transparent;
+}
+
+.book-card-embed .cover {
+  width: 48px;
+}
+
+.book-card-embed .card-title {
+  font-size: 1rem;
+}
+
+.person-card > .avatar {
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+.person-card-compact {
+  align-items: center;
+  text-align: center;
+}
+
+.person-card-compact > .avatar {
+  width: 64px;
+  height: 64px;
+}
+
+.person-card-compact .card-body {
+  align-items: center;
+  width: 100%;
+}
+
+.person-card-compact .card-actions {
+  justify-content: center;
+}
+
+/* ⋯ More: a popover of plain buttons and links, placed by its button. */
+.more-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.more-menu:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+
+.more-menu :is(a, button) {
+  display: block;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.more-menu :is(a, button):hover,
+.more-menu :is(a, button):focus-visible {
+  background: var(--paper-sunk);
+}
+
+@supports (position-area: block-end) {
+  .more-btn + .more-menu {
+    position-area: block-end span-inline-start;
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .more-menu {
+    opacity: 0;
+    transition: opacity 0.12s, display 0.12s allow-discrete, overlay 0.12s allow-discrete;
+  }
+
+  .more-menu:popover-open {
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
+/* People inside a card (who read a book): slim rows, as in Book club. */
+.card-people {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-people li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.card-people li > a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.card-people li > a:hover {
+  text-decoration: underline;
 }

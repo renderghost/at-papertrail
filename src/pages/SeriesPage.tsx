@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Empty, ErrorNote, Loading, StatusPill } from '../components/bits'
-import { Cover } from '../components/Cover'
-import { QuickAdd } from '../components/QuickAdd'
+import { Empty, ErrorNote, Loading } from '../components/bits'
+import { BookCard, CardGrid } from '../components/Cards'
 import { positionLabel, quickBook } from '../components/Series'
 import { useMaybeSession } from '../lib/auth'
 import { parseSeries } from '../lib/bookhive/series'
@@ -11,7 +10,7 @@ import { findBylineAuthor, type BylineBook } from '../lib/byline'
 import { FEATURES } from '../lib/features'
 import { formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
-import { authorPath, bookPath } from '../lib/paths'
+import { authorPath } from '../lib/paths'
 import { hasRead, seriesProgress } from '../lib/series'
 import { useAuthorSeries, useByline } from '../lib/usePeople'
 
@@ -69,35 +68,34 @@ export function SeriesPage() {
         </div>
       </div>
 
-      <ol className="series-books">
+      <CardGrid size="list" className="series-books" label={`${title}, in reading order`}>
         {progress.books.map((b) => {
           const next = b === progress.next
           const gap = progress.gaps.includes(b)
           return (
-            <li key={b.book.id} className={[next ? 'next' : '', !b.main ? 'extra' : ''].join(' ').trim() || undefined}>
-              <Link to={bookPath(b.book.id)} tabIndex={-1} aria-hidden="true">
-                <Cover hiveId={b.book.id} title={b.book.title} authors={b.book.authors} entry={b.entry} fallbackUrl={b.book.cover || b.book.thumbnail} size="sm" />
-              </Link>
-              <div className="series-book-body">
-                <span className="small muted">
-                  {positionLabel(b.position) || 'Unnumbered'}
-                  {!b.main ? (b.position?.includes('-') ? ' · collection' : ' · novella or extra') : ''}
-                  {b.book.publicationYear ? ` · ${b.book.publicationYear}` : ''}
-                </span>
-                <Link className="name" to={bookPath(b.book.id)}>
-                  {b.book.title}
-                </Link>
-                <div className="row series-book-state">
-                  {next && <span className="badge badge-hive">Up next</span>}
-                  {gap && <span className="badge">Missed</span>}
-                  {me && (b.entry ? <StatusPill status={b.entry.value.status} /> : <QuickAdd book={quickBook(b.book)} />)}
-                  {hasRead(b.entry) && b.entry?.value.status !== STATUS.finished && <span className="small muted">read before</span>}
-                </div>
-              </div>
-            </li>
+            <BookCard
+              key={b.book.id}
+              book={{ ...quickBook(b.book), entry: b.entry }}
+              context={
+                <>
+                  <p>
+                    {positionLabel(b.position) || 'Unnumbered'}
+                    {!b.main ? (b.position?.includes('-') ? ' · collection' : ' · novella or extra') : ''}
+                    {b.book.publicationYear ? ` · ${b.book.publicationYear}` : ''}
+                    {hasRead(b.entry) && b.entry?.value.status !== STATUS.finished ? ' · read before' : ''}
+                  </p>
+                  {(next || gap) && (
+                    <p className="row series-book-state">
+                      {next && <span className="badge badge-hive">Up next</span>}
+                      {gap && <span className="badge">Missed</span>}
+                    </p>
+                  )}
+                </>
+              }
+            />
           )
         })}
-      </ol>
+      </CardGrid>
 
       {forthcoming.length > 0 && (
         <section className="section">

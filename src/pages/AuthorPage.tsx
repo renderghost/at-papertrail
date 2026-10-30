@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Avatar, Empty, Loading, Stars, StatusPill } from '../components/bits'
+import { Avatar, Empty, Loading, Stars } from '../components/bits'
+import { BookCard, CardGrid } from '../components/Cards'
 import { Cover } from '../components/Cover'
 import { FollowButton } from '../components/FollowButton'
 import { Icon } from '../components/Icon'
@@ -103,7 +104,7 @@ export function AuthorPage() {
             <h2>{g.series}</h2>
             <span className="count">Series</span>
           </div>
-          <BookGrid books={g.books} byHive={byHive} />
+          <BookGrid books={g.books} byHive={byHive} label={g.series} />
         </section>
       ))}
       {grouped && grouped.standalone.length > 0 && (
@@ -112,7 +113,7 @@ export function AuthorPage() {
             <h2>{grouped.series.length ? 'Other books' : 'Books'}</h2>
             <span className="count">{grouped.standalone.length}</span>
           </div>
-          <BookGrid books={grouped.standalone} byHive={byHive} />
+          <BookGrid books={grouped.standalone} byHive={byHive} label={grouped.series.length ? 'Other books' : 'Books'} />
         </section>
       )}
     </article>
@@ -209,32 +210,24 @@ function YouAndAuthor({ mine }: { mine: BookEntry[] }) {
   )
 }
 
-function BookGrid({ books, byHive }: { books: HiveBook[]; byHive: Map<string, BookEntry> }) {
+function BookGrid({ books, byHive, label }: { books: HiveBook[]; byHive: Map<string, BookEntry>; label: string }) {
   return (
-    <ul className="author-books">
+    <CardGrid size="compact" className="author-books" label={label}>
       {books.map((b) => {
         const mine = byHive.get(b.id)
         const series = parseSeries(b.series)
+        const facts = [b.publicationYear, series ? describeSeries(series).replace(/ of .*$/, '') : null, b.rating ? `${(b.rating / 1000).toFixed(2)} avg` : null].filter(Boolean)
         return (
-          <li key={b.id}>
-            <Link to={bookPath(b.id)} state={mine ? { entry: mine } : undefined}>
-              <Cover hiveId={b.id} title={b.title} authors={b.authors} entry={mine} fallbackUrl={b.cover ?? b.thumbnail} size="md" />
-            </Link>
-            <div className="author-book-body">
-              <Link className="name" to={bookPath(b.id)} state={mine ? { entry: mine } : undefined}>
-                {b.title}
-              </Link>
-              <div className="small muted">
-                {[b.publicationYear, series ? describeSeries(series).replace(/ of .*$/, '') : null, b.rating ? `${(b.rating / 1000).toFixed(2)} avg` : null]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </div>
-              {mine && <StatusPill status={mine.value.status} />}
-            </div>
-          </li>
+          <BookCard
+            key={b.id}
+            size="compact"
+            book={{ hiveId: b.id, title: b.title, authors: b.authors, identifiers: b.identifiers, catalog: b, entry: mine }}
+            state={mine ? { entry: mine } : undefined}
+            context={facts.length ? <p>{facts.join(' · ')}</p> : undefined}
+          />
         )
       })}
-    </ul>
+    </CardGrid>
   )
 }
 

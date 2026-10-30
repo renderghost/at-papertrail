@@ -5,6 +5,7 @@ import { Avatar, Empty, ErrorNote, Loading, Stars, StatusPill } from '../compone
 import { AuthorLinks } from '../components/AuthorLinks'
 import { BookEditor } from '../components/BookEditor'
 import { BylinePanel } from '../components/BylinePanel'
+import { CardGrid, PersonCard } from '../components/Cards'
 import { Cover } from '../components/Cover'
 import { Icon } from '../components/Icon'
 import { AddToList } from '../components/Lists'
@@ -387,37 +388,39 @@ export function NetworkReaders({
           </a>
         )}
       </div>
-      <ul className="members">
+      <CardGrid size="list" className="network-readers" label="In your network">
         {matches.map(({ reader, book, review }) => (
-          <li key={reader.profile.did} className="member">
-            <Avatar profile={reader.profile} size={36} />
-            <div className="body">
-              <Link className="name" to={profilePath(reader.profile.handle)}>
-                {displayName(reader.profile)}
-              </Link>{' '}
-              {book && <StatusPill status={book.value.status} />}
-              <div className="small muted">
-                {book
-                  ? book.value.finishedAt && book.value.status === STATUS.finished
-                    ? `Finished ${formatDate(book.value.finishedAt)}`
-                    : book.value.startedAt
-                      ? `Started ${formatDate(book.value.startedAt)}`
-                      : `Added ${formatDate(book.value.createdAt)}`
-                  : `Reviewed on PopFeed ${formatDate(review!.value.createdAt)}`}{' '}
-                {book && stoppedAt(book) && `· stopped ${stoppedAt(book)} `}
+          <PersonCard
+            key={reader.profile.did}
+            person={{ name: displayName(reader.profile), handle: reader.profile.handle, avatar: reader.profile.avatar }}
+            to={profilePath(reader.profile.handle)}
+            context={
+              <p className="row network-status">
+                {book && <StatusPill status={book.value.status} />}
+                <span>
+                  {book
+                    ? book.value.finishedAt && book.value.status === STATUS.finished
+                      ? `Finished ${formatDate(book.value.finishedAt)}`
+                      : book.value.startedAt
+                        ? `Started ${formatDate(book.value.startedAt)}`
+                        : `Added ${formatDate(book.value.createdAt)}`
+                    : `Reviewed on PopFeed ${formatDate(review!.value.createdAt)}`}
+                  {book && stoppedAt(book) ? ` · stopped ${stoppedAt(book)}` : ''}
+                </span>
                 <Stars stars={book?.value.stars ?? (review?.value.rating || undefined)} size={13} />
-              </div>
-              <ReviewText text={book?.value.review} />
-              {review && (!book?.value.review || review.value.text) && (
-                <>
-                  {book && review.value.text && <div className="small muted review-source">On PopFeed:</div>}
-                  <ReviewText text={review.value.text} spoilers={review.value.containsSpoilers} />
-                </>
-              )}
-            </div>
-          </li>
+              </p>
+            }
+          >
+            <ReviewText text={book?.value.review} />
+            {review && (!book?.value.review || review.value.text) && (
+              <>
+                {book && review.value.text && <div className="small muted review-source">On PopFeed:</div>}
+                <ReviewText text={review.value.text} spoilers={review.value.containsSpoilers} />
+              </>
+            )}
+          </PersonCard>
         ))}
-      </ul>
+      </CardGrid>
     </section>
   )
 }

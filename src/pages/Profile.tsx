@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Avatar, ErrorNote, Loading, Stars } from '../components/bits'
 import { ReadingCard } from '../components/BookTile'
+import { CardGrid } from '../components/Cards'
 import { Cover } from '../components/Cover'
 import { Favourites } from '../components/Favourites'
 import { FollowButton } from '../components/FollowButton'
@@ -130,11 +131,11 @@ export function Profile() {
                 <h2>Currently reading</h2>
                 <span className="count">{reading.length}</span>
               </div>
-              <div className="reading-list">
+              <CardGrid size="large" className="reading-list" label="Currently reading">
                 {reading.map((e) => (
                   <ReadingCard key={e.uri} entry={e} />
                 ))}
-              </div>
+              </CardGrid>
             </section>
           )}
 
