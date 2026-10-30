@@ -25,6 +25,7 @@ import { useNetwork, type Reader } from '../lib/network'
 import { bookPath, loginPath, profilePath, seriesPath } from '../lib/paths'
 import { reviewMatches, type ReviewEntry } from '../lib/popfeed'
 import { lookupBookDetails, newBookRecord } from '../lib/search'
+import { askUrl, describeTake, networkTake, stoppedAt, trustScores } from '../lib/taste'
 
 type LocationState = { entry?: BookEntry; justAdded?: boolean } | null
 
@@ -180,7 +181,7 @@ export function BookPage() {
 
       {FEATURES.byline && <BylinePanel hiveId={hiveId} identifiers={identifiers} />}
 
-      {me && <NetworkReaders did={me.did} readers={network.readers} entry={known} hiveId={hiveId} identifiers={identifiers} loading={network.status === 'loading'} />}
+      {me && <NetworkReaders did={me.did} readers={network.readers} entry={known} hiveId={hiveId} title={title!} identifiers={identifiers} loading={network.status === 'loading'} />}
 
       <BookHiveCommunity
         detail={hive.data ?? null}
@@ -327,6 +328,7 @@ export function NetworkReaders({
   readers,
   entry,
   hiveId,
+  title,
   identifiers,
   loading,
 }: {
@@ -334,9 +336,13 @@ export function NetworkReaders({
   readers: Reader[]
   entry: BookEntry | undefined
   hiveId: string
+  title: string
   identifiers: BookIdentifiers
   loading: boolean
 }) {
+  const library = useMyLibrary()
+  // The people most like you first (#64).
+  const trust = useMemo(() => trustScores(library.data ?? [], readers, did), [library.data, readers, did])
   const matches = useMemo(() => {
     const keys = new Set(entry ? sameBookKeys(entry) : [`hive:${hiveId}`])
     if (identifiers.isbn13) keys.add(`isbn:${identifiers.isbn13}`)
@@ -347,8 +353,13 @@ export function NetworkReaders({
       const review = reader.reviews.find((r) => reviewMatches(r.value, { hiveId, identifiers }))
       if (book || review) found.push({ reader, book, review })
     }
-    return found
-  }, [readers, entry, hiveId, identifiers, did])
+    return found.sort((a, b) => (trust.get(b.reader.profile.did) ?? -1) - (trust.get(a.reader.profile.did) ?? -1))
+  }, [readers, entry, hiveId, identifiers, did, trust])
+  const take = networkTake(
+    matches.flatMap((m) => (m.book ? [m.book] : [])),
+    matches.flatMap((m) => (m.book ? [m.book.value.stars ?? (m.review?.value.rating || undefined)] : [])),
+  )
+  const tried = matches.filter((m) => (m.book && m.book.value.status !== STATUS.wantToRead) || m.review)
 
   if (matches.length === 0) {
     return loading ? <p className="muted small section">Checking who in your network has this book…</p> : null
@@ -358,6 +369,23 @@ export function NetworkReaders({
       <div className="section-title">
         <h2>In your network</h2>
         <span className="count">{matches.length}</span>
+      </div>
+      <div className="row network-take">
+        <p className="small verdict">{describeTake(take)}</p>
+        {tried.length > 0 && (
+          <a
+            className="btn btn-sm"
+            href={askUrl(
+              title,
+              tried.map((m) => m.reader.profile.handle),
+              new URL(bookPath(hiveId), window.location.origin).href,
+            )}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Icon name="chat" size={16} /> Ask them about it
+          </a>
+        )}
       </div>
       <ul className="members">
         {matches.map(({ reader, book, review }) => (
@@ -376,6 +404,7 @@ export function NetworkReaders({
                       ? `Started ${formatDate(book.value.startedAt)}`
                       : `Added ${formatDate(book.value.createdAt)}`
                   : `Reviewed on PopFeed ${formatDate(review!.value.createdAt)}`}{' '}
+                {book && stoppedAt(book) && `· stopped ${stoppedAt(book)} `}
                 <Stars stars={book?.value.stars ?? (review?.value.rating || undefined)} size={13} />
               </div>
               <ReviewText text={book?.value.review} />

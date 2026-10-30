@@ -2694,3 +2694,84 @@ p {
   background: var(--paper-sunk);
   flex: none;
 }
+
+/* Taste twins and asking your network (#63, #64) */
+.page-actions {
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.match-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 2px;
+}
+
+.taste .club-group-label {
+  margin: 20px 0 8px;
+}
+
+.twin-books {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.disagreement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+}
+
+.disagreement span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.verdict {
+  margin: 6px 0 0;
+  font-weight: 500;
+}
+
+.network-take {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+}
+
+.network-take .verdict {
+  margin: 0;
+}
+
+.network-copies {
+  list-style: none;
+  margin: 8px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.network-copies li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.network-copies a {
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.network-copies a:hover {
+  text-decoration: underline;
+}

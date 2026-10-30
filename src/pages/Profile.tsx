@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Avatar, ErrorNote, Loading, Stars } from '../components/bits'
 import { ReadingCard } from '../components/BookTile'
@@ -8,19 +9,28 @@ import { Icon } from '../components/Icon'
 import { ListsGrid } from '../components/Lists'
 import { ReviewText } from '../components/ReviewText'
 import { Shelves } from '../components/Shelves'
+import { shortName, TasteSection } from '../components/Taste'
 import { useMaybeSession } from '../lib/auth'
 import { displayAuthors } from '../lib/bookhive/authors'
 import { STATUS, type BookEntry } from '../lib/bookhive/types'
 import { displayName, formatDate, plural } from '../lib/format'
-import { useDocumentTitle, useLibrary, useProfile } from '../lib/hooks'
+import { useDocumentTitle, useLibrary, useMyLibrary, useProfile } from '../lib/hooks'
 import { bookPath, shelvesPath } from '../lib/paths'
 import { useLists } from '../lib/useLists'
+import { tasteMatch } from '../lib/taste'
 import { usePopfeedProfile } from '../lib/usePeople'
 
 const YEAR = String(new Date().getUTCFullYear())
 
 function reviewedAt(e: BookEntry): string {
   return e.value.finishedAt ?? e.value.bookProgress?.updatedAt ?? e.value.createdAt
+}
+
+/** Your taste match with someone (#63), worked out from both your libraries. */
+function YouAndThem({ books, name }: { books: BookEntry[]; name: string }) {
+  const mine = useMyLibrary()
+  const match = useMemo(() => (mine.data ? tasteMatch(mine.data, { books }) : null), [mine.data, books])
+  return match ? <TasteSection match={match} name={name} /> : null
 }
 
 /** Anyone's reading life, read-only and public, straight from their PDS. */
@@ -127,6 +137,8 @@ export function Profile() {
               </div>
             </section>
           )}
+
+          {me && !isMe && <YouAndThem books={entries} name={shortName(p)} />}
 
           <Favourites did={p.did} isMe={isMe} />
 
