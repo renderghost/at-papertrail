@@ -3,6 +3,7 @@ import { Empty, ErrorNote, Loading } from '../components/bits'
 import { ReadingCard } from '../components/BookTile'
 import { Icon } from '../components/Icon'
 import { ListsGrid } from '../components/Lists'
+import { ContinueSeries } from '../components/Series'
 import { Shelves } from '../components/Shelves'
 import { useSession } from '../lib/auth'
 import { STATUS } from '../lib/bookhive/types'
@@ -64,6 +65,7 @@ export function Library() {
         </Link>
       </div>
       <nav className="library-tools small" aria-label="Library tools">
+        <Link to="/scan">Scan</Link>
         <Link to="/import">Import</Link>
         <Link to="/export">Export</Link>
         <Link to="/fix">Fix matches</Link>
@@ -96,6 +98,7 @@ export function Library() {
               </div>
             </section>
           )}
+          <ContinueSeries entries={entries} />
           <YourLists />
           <section className="section">
             <div className="section-title">
