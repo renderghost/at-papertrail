@@ -10,11 +10,11 @@ Papertrail is a **front end with no database**: a static site plus two small, st
 | --- | --- |
 | **Library** | Your shelves (reading, want to read, finished, abandoned), filtered by what you own, or what you own but haven't read yet. Edit status, dates, progress (pages or %), half-star ratings, reviews and ownership. Re-reading a finished book keeps the earlier read in its history, as BookHive does. |
 | **Add a book** | Searches BookHive's own catalogue first, then Open Library and Google Books (duplicates dropped), matching each of those to BookHive by `hiveId`. Catalogued books appear on bookhive.buzz. Uncatalogued ones still save, flagged. |
-| **Book pages** | `/books/bk_…`, the same paths as bookhive.buzz. Catalogue details, series, the rating spread, your reading and re-reads, the lists it's on, the author's own details when they're on [Byline](https://byline.pub), what people you follow thought (on BookHive and PopFeed, spoilers hidden), and every BookHive review and comment. |
+| **Book pages** | `/books/bk_…`, the same paths as bookhive.buzz. Catalogue details, series, the rating spread, your reading and re-reads, the lists it's on, what people you follow thought (on BookHive and PopFeed, spoilers hidden), and every BookHive review and comment. |
 | **Lists** | `/shelves/:handle/:rkey`. Make, rank, reorder, annotate and share book lists; add from any book page or your library. Stored as PopFeed lists exactly as BookHive writes them, so they show on both. PopFeed's own shelves appear read-only. |
-| **Series** | `/authors/:name/series/:title`. A series in reading order with what you've read, what's next and what you skipped (novellas listed, never counted), plus forthcoming books from Byline. Book pages show their series, and offer the next one the moment you mark a book finished; your library has a "Continue a series" row. |
+| **Series** | `/authors/:name/series/:title`. A series in reading order with what you've read, what's next and what you skipped (novellas listed, never counted). Book pages show their series, and offer the next one the moment you mark a book finished; your library has a "Continue a series" row. |
 | **Scan** | `/scan`. Point your camera at a barcode to add a book, catalogue a shelf (each book added or marked owned, with undo), or check a book in a bookshop: do you have it, and what did people you follow think? The browser's own barcode reader where there is one, else a WebAssembly decoder; frames never leave your device. Typing an ISBN works too. |
-| **Authors** | `/authors/:name`. The bibliography (editions merged, series in order), you and the author, which friends read them, and the author's Byline profile, follow button and forthcoming books, or an invitation to claim the page. |
+| **Authors** | `/authors/:name`. The bibliography (editions merged, series in order), you and the author, and which friends read them. |
 | **Feed** | "@friend started / finished / reviewed / wants to read …" from everyone you follow on Bluesky. |
 | **Book club** | For each book you're reading: who you follow is reading it now, and who has read it before (their reviews are folded away to avoid spoilers). One tap opens a Bluesky post to start the conversation. |
 | **Covered** | Wrapped-style story cards for any year or month: books and pages, month-by-month chart, top genres, longest and shortest, fastest read, highest rated, most-read author, bookends. |
@@ -27,6 +27,8 @@ Papertrail is a **front end with no database**: a static site plus two small, st
 
 Book, profile, list and author pages, and the switching guide, are public: they work signed out.
 
+The [Byline](https://byline.pub) integration (author-verified book details, author profiles and forthcoming books) is switched off for now: `FEATURES.byline` in `src/lib/features.ts`, to be restored in #94.
+
 ## How it works
 
 ```
@@ -37,8 +39,7 @@ Browser ──OAuth (DPoP)──▶ your PDS          writes: buzz.bookhive.book
    ├──▶ public.api.bsky.app                 profiles, who you follow
    ├──▶ plc.directory → each follow's PDS    their buzz.bookhive.book records
    ├──▶ each follow's PDS                    their social.popfeed.feed.review book reviews (read only)
-   ├──▶ relay1.us-east.bsky.network          which follows use BookHive or PopFeed; Byline's authors
-   ├──▶ Byline authors' PDSes                pub.byline.profile, pub.byline.book (author-signed details)
+   ├──▶ relay1.us-east.bsky.network          which follows use BookHive or PopFeed
    ├──▶ @bookhive.buzz's PDS                 buzz.bookhive.catalogBook (rich book data, keyed by hiveId)
    ├──▶ /api/bookhive/* (Vercel function) ─▶ bookhive.buzz's XRPC: search, reviews, comments (no CORS upstream)
    └──▶ Open Library, Google Books           search, plus details for books BookHive hasn't catalogued

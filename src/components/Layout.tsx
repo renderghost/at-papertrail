@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth, useMaybeSession } from '../lib/auth'
+import { FEATURES } from '../lib/features'
 import { useProfile } from '../lib/hooks'
 import { loginPath, profilePath } from '../lib/paths'
 import { Avatar } from './bits'
@@ -108,7 +109,12 @@ export function Layout() {
       <footer className="footer">
         Papertrail saves your books, lists and favourites on your own PDS in the formats{' '}
         <a href="https://bookhive.buzz">BookHive</a> and <a href="https://popfeed.social">PopFeed</a> use, so they show up
-        there too. Book data from BookHive's catalogue, <a href="https://byline.pub">Byline</a>,{' '}
+        there too. Book data from BookHive's catalogue,{' '}
+        {FEATURES.byline && (
+          <>
+            <a href="https://byline.pub">Byline</a>,{' '}
+          </>
+        )}
         <a href="https://openlibrary.org">Open Library</a> and Google Books.
       </footer>
     </>

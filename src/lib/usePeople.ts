@@ -3,6 +3,7 @@ import { useAuth, useMaybeSession, useSession } from './auth'
 import { getAuthorBooks } from './bookhive/api'
 import { loadBylineDirectory } from './byline'
 import { loadPopfeedProfile, saveFavourites, type FavouriteBook, type ProfileRecord } from './favourites'
+import { FEATURES } from './features'
 import { follow, followUri, unfollow } from './follows'
 import { WRITE_SCOPES } from './oauthConfig'
 import { grants } from './scopes'
@@ -45,8 +46,9 @@ export function useSaveFavourites() {
   })
 }
 
+/** Byline's author directory; never fetched while the feature is off (#94). */
 export function useByline() {
-  return useQuery({ queryKey: ['byline'], queryFn: () => loadBylineDirectory(), staleTime: 6 * HOUR, retry: false })
+  return useQuery({ queryKey: ['byline'], queryFn: () => loadBylineDirectory(), staleTime: 6 * HOUR, retry: false, enabled: FEATURES.byline })
 }
 
 /** Whether the signed-in reader follows `subject`, and a toggle. */

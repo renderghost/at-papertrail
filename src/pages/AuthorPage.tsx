@@ -18,6 +18,7 @@ import {
   plainText,
   type BylineAuthor,
 } from '../lib/byline'
+import { FEATURES } from '../lib/features'
 import { displayName, formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
@@ -35,7 +36,7 @@ export function AuthorPage() {
   const network = useNetwork(me?.did)
   useDocumentTitle(name)
 
-  const author = byline.data ? findBylineAuthor(byline.data, name) : null
+  const author = FEATURES.byline && byline.data ? findBylineAuthor(byline.data, name) : null
   const works = useMemo(() => mergeEditions(books.data?.books ?? []), [books.data])
   const grouped = useMemo(() => groupBibliography(works), [works])
   const mine = useMemo(() => (library.data ?? []).filter((e) => isBy(e.value.authors, name)), [library.data, name])
@@ -51,7 +52,7 @@ export function AuthorPage() {
   )
   const catalogBio = works.find((b) => b.authorBio?.trim())?.authorBio
 
-  if (books.isPending && byline.isPending) return <Loading />
+  if (books.isPending && (!FEATURES.byline || byline.isPending)) return <Loading />
   const nothing = works.length === 0 && !author && mine.length === 0
   if (nothing && !books.isPending) {
     return (
@@ -160,7 +161,7 @@ function AuthorHeader({
           BookHive <Icon name="external" size={14} />
         </a>
       </div>
-      {!author && (
+      {FEATURES.byline && !author && (
         <p className="small muted claim">
           Are you {name}? <a href="https://byline.pub" target="_blank" rel="noreferrer">Claim your author page on Byline</a>{' '}
           and your own blurbs, links and new releases will appear here.
