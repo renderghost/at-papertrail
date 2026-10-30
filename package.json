@@ -22,7 +22,8 @@
     "ohash": "1.1.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@atcute/oauth-crypto": "^1.0.1",

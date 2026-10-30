@@ -56,6 +56,9 @@ export function AddBook() {
             too.
           </p>
         </div>
+        <Link className="btn" to="/scan">
+          <Icon name="scan" size={18} /> Scan a barcode
+        </Link>
       </div>
       <form
         role="search"
