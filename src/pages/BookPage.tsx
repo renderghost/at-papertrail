@@ -10,7 +10,9 @@ import { Icon } from '../components/Icon'
 import { AddToList } from '../components/Lists'
 import { RatingBars } from '../components/RatingBars'
 import { ReviewText } from '../components/ReviewText'
+import { SeriesSection } from '../components/Series'
 import { useMaybeSession } from '../lib/auth'
+import { firstAuthor } from '../lib/bookhive/authors'
 import { sameBookKeys } from '../lib/bookclub'
 import type { HiveActivity, HiveBookDetail, HiveComment, HiveReview } from '../lib/bookhive/api'
 import { bookhiveBookUrl } from '../lib/bookhive/catalog'
@@ -19,7 +21,7 @@ import { STATUS, STATUS_LABEL, type BookEntry, type BookIdentifiers, type BookSt
 import { displayName, formatDate, plural } from '../lib/format'
 import { useBookWrites, useCatalog, useDocumentTitle, useHiveBook, useMyLibrary } from '../lib/hooks'
 import { useNetwork, type Reader } from '../lib/network'
-import { bookPath, loginPath, profilePath } from '../lib/paths'
+import { bookPath, loginPath, profilePath, seriesPath } from '../lib/paths'
 import { reviewMatches, type ReviewEntry } from '../lib/popfeed'
 import { lookupBookDetails, newBookRecord } from '../lib/search'
 
@@ -106,13 +108,7 @@ export function BookPage() {
           </p>
           {series && (
             <p className="series">
-              {series.url ? (
-                <a href={series.url} target="_blank" rel="noreferrer">
-                  {describeSeries(series)}
-                </a>
-              ) : (
-                describeSeries(series)
-              )}
+              <Link to={seriesPath(firstAuthor(authors), series.title)}>{describeSeries(series)}</Link>
             </p>
           )}
           <Facts catalog={book} pages={details?.pages} year={details?.year} publisher={details?.publisher} />
@@ -169,6 +165,8 @@ export function BookPage() {
           <AddFromPage hiveId={hiveId} title={title!} authors={authors} catalog={book} source={theirs} />
         )}
       </section>
+
+      <SeriesSection book={book} mine={mine} />
 
       {me && (
         <section className="section-tight">
@@ -322,7 +320,8 @@ function AddFromPage({
 type NetworkMatch = { reader: Reader; book?: BookEntry; review?: ReviewEntry }
 
 /** People you follow who have this book on BookHive or reviewed it on PopFeed. */
-function NetworkReaders({
+/** Who in your network has this book, and what they thought; also the scanner's bookshop mode. */
+export function NetworkReaders({
   did,
   readers,
   entry,
