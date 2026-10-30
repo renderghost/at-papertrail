@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Loading } from './components/bits'
 import { Layout } from './components/Layout'
+import { ToastProvider } from './components/Toast'
 import { AuthProvider, useAuth } from './lib/auth'
 import { MOVED, movedPath } from './lib/nav'
 import { bookPath, loginPath, safeNext } from './lib/paths'
@@ -132,7 +133,9 @@ export function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   )

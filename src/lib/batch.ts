@@ -1,6 +1,6 @@
 import { applyPatch } from './bookhive/library'
 import { nextReadingState } from './bookhive/lifecycle'
-import { BOOK_COLLECTION, type BookEntry, type BookStatus } from './bookhive/types'
+import { BOOK_COLLECTION, type BookEntry, type BookRecord, type BookStatus } from './bookhive/types'
 import { itemIsBook, LIST, LIST_ITEM, newListItem, type BookList } from './lists'
 import { nextTid } from './tid'
 import type { Write } from './xrpc'
@@ -28,6 +28,16 @@ const update = (collection: string, rkey: string, value: unknown): Write => ({ $
 const create = (collection: string, rkey: string, value: unknown): Write => ({ $type: 'com.atproto.repo.applyWrites#create', collection, rkey, value })
 const remove = (collection: string, rkey: string): Write => ({ $type: 'com.atproto.repo.applyWrites#delete', collection, rkey })
 
+/** A book record moved to `status`, dates stamped as the book page would: a book entering a status gets today, a re-read keeps the last read. */
+export function withStatus(value: BookRecord, status: BookStatus, now: () => string = () => new Date().toISOString()): BookRecord {
+  const state = nextReadingState(
+    { status: value.status ?? null, startedAt: value.startedAt ?? null, finishedAt: value.finishedAt ?? null, previousReads: value.previousReads ?? null },
+    { status },
+    { now },
+  )
+  return applyPatch(value, state)
+}
+
 export function planBatch(entries: BookEntry[], change: BatchChange, { now = () => new Date().toISOString(), tid = () => nextTid() }: { now?: () => string; tid?: () => string } = {}): BatchPlan {
   const writes: Write[] = []
   const undo: Write[] = []
@@ -36,13 +46,7 @@ export function planBatch(entries: BookEntry[], change: BatchChange, { now = () 
     for (const e of entries) {
       const v = e.value
       if (v.status === change.status) continue
-      // The same rules as the book page: dates are stamped as a book enters a status, and a re-read keeps the last one.
-      const state = nextReadingState(
-        { status: v.status ?? null, startedAt: v.startedAt ?? null, finishedAt: v.finishedAt ?? null, previousReads: v.previousReads ?? null },
-        { status: change.status },
-        { now },
-      )
-      writes.push(update(BOOK_COLLECTION, e.rkey, applyPatch(v, state)))
+      writes.push(update(BOOK_COLLECTION, e.rkey, withStatus(v, change.status, now)))
       undo.push(update(BOOK_COLLECTION, e.rkey, v))
     }
   } else if (change.kind === 'owned') {
@@ -77,12 +81,12 @@ export function planBatch(entries: BookEntry[], change: BatchChange, { now = () 
   return { writes, undo, changed: writes.length }
 }
 
-/** "Marked 3 books Finished", for the notice after a batch. */
+/** "Moved 3 books to Read", for the notice after a batch. */
 export function describeBatch(change: BatchChange, changed: number, statusLabel: (s: BookStatus) => string): string {
   const books = `${changed} ${changed === 1 ? 'book' : 'books'}`
   switch (change.kind) {
     case 'status':
-      return `Marked ${books} ${statusLabel(change.status)}`
+      return `Moved ${books} to ${statusLabel(change.status)}`
     case 'owned':
       return `Marked ${books} as ${change.owned ? 'owned' : 'not owned'}`
     case 'list':

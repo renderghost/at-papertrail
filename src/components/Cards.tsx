@@ -1,5 +1,6 @@
 import { Children, useId, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useMaybeSession } from '../lib/auth'
 import { displayAuthors } from '../lib/bookhive/authors'
 import type { BookEntry, BookIdentifiers, CatalogBook } from '../lib/bookhive/types'
 import { bookPath } from '../lib/paths'
@@ -7,7 +8,7 @@ import { Avatar } from './bits'
 import { Cover } from './Cover'
 import { Icon } from './Icon'
 import { usePopoverPlacement } from './popover'
-import { QuickAdd } from './QuickAdd'
+import { StatusControl } from './StatusControl'
 
 /**
  * The book and person components (#100). One visual language everywhere:
@@ -35,35 +36,38 @@ export type MoreItem = { label: string; onSelect?: () => void; href?: string }
 export type BookCardSize = 'large' | 'compact' | 'embed'
 
 /**
- * A book. `action` is the one primary action; by default "Want to read", or
- * your status if it's yours (nothing when signed out). Pass null for none.
- * The rest go under ⋯ More.
+ * A book. Its foot carries your status for it (#106): the full control on
+ * large and list cards, icons on compact and inset ones, nothing signed out.
+ * `status={false}` leaves it off where the state is already the point (your
+ * currently reading, books you both loved). `action` adds one more control
+ * beside it, such as Ask them on Bluesky. `to={null}` for a book with no
+ * page to open yet.
  */
 export function BookCard({
   book,
   size = 'large',
   context,
+  status = true,
   action,
-  more = [],
   children,
   state,
+  to,
 }: {
   book: CardBook
   size?: BookCardSize
   context?: ReactNode
+  status?: boolean
   action?: ReactNode
-  more?: MoreItem[]
   /** Nested content, such as the people who read it (list cards). */
   children?: ReactNode
   /** Router state for the book page (a copy it can show at once). */
   state?: unknown
+  to?: string | null
 }) {
-  const primary =
-    action === undefined ? (
-      <QuickAdd book={{ hiveId: book.hiveId, title: book.title, authors: book.authors, identifiers: book.identifiers, catalog: book.catalog ?? null }} />
-    ) : (
-      action
-    )
+  const href = to === undefined ? bookPath(book.hiveId) : to
+  // Signed out there's no status to show, so no foot at all.
+  const signedIn = !!useMaybeSession()
+  const showStatus = status && signedIn
   return (
     <article className={`card book-card book-card-${size}`}>
       <Cover
@@ -77,15 +81,29 @@ export function BookCard({
       />
       <div className="card-body">
         <h3 className="card-title">
-          <Link className="card-link" to={bookPath(book.hiveId)} state={state} title={book.title}>
-            {book.title}
-          </Link>
+          {href ? (
+            <Link className="card-link" to={href} state={state} title={book.title}>
+              {book.title}
+            </Link>
+          ) : (
+            <span title={book.title}>{book.title}</span>
+          )}
         </h3>
         <p className="card-sub">{displayAuthors(book.authors)}</p>
         {context && <div className="card-context">{context}</div>}
         {children && <div className="card-children">{children}</div>}
-        <CardActions label={book.title} primary={primary} more={more} />
       </div>
+      {(showStatus || action) && (
+        <footer className="card-actions">
+          {showStatus && (
+            <StatusControl
+              book={{ hiveId: book.hiveId, title: book.title, authors: book.authors, identifiers: book.identifiers, catalog: book.catalog ?? null }}
+              variant={size === 'large' ? 'full' : 'icons'}
+            />
+          )}
+          {action}
+        </footer>
+      )}
     </article>
   )
 }

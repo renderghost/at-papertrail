@@ -8,6 +8,7 @@ import { getExplore, getGenreBooks, getLanguages, listGenres, type HiveBook } fr
 import { plural } from '../lib/format'
 import { useDocumentTitle } from '../lib/hooks'
 import { authorPath, genrePath, PATHS } from '../lib/paths'
+import { useNotInterestedIds } from '../lib/useLists'
 
 const HOUR = 60 * 60 * 1000
 
@@ -125,7 +126,9 @@ export function GenrePage() {
     queryFn: ({ signal }) => getGenreBooks(genre, { language: language || undefined, limit: 100, signal }),
     staleTime: 6 * HOUR,
   })
-  const works = useMemo(() => distinctWorks(books.data ?? []), [books.data])
+  // Books you've marked Not Interested (#106) stay out.
+  const passed = useNotInterestedIds()
+  const works = useMemo(() => distinctWorks(books.data ?? []).filter((b) => !passed.includes(b.id)), [books.data, passed])
 
   return (
     <>

@@ -41,7 +41,7 @@ export function TasteSection({ match, name }: { match: TasteMatch; name: string 
           <h3 className="club-group-label">Where you disagree most</h3>
           <CardGrid size="compact" label="Where you disagree most">
             {match.disagreements.slice(0, 5).map((s) => (
-              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} action={null} context={<Both pair={s} name={name} />} />
+              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} status={false} context={<Both pair={s} name={name} />} />
             ))}
           </CardGrid>
         </>

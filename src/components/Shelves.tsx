@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { STATUS, type BookEntry, type BookStatus } from '../lib/bookhive/types'
+import { STATUS, STATUS_LABEL, type BookEntry, type BookStatus } from '../lib/bookhive/types'
 import { Empty } from './bits'
 import { BookTile, type ShelfView } from './BookTile'
 import { SelectShelf } from './SelectShelf'
@@ -8,10 +8,7 @@ type Filter = BookStatus | 'all'
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
-  { key: STATUS.reading, label: 'Reading' },
-  { key: STATUS.wantToRead, label: 'Want to read' },
-  { key: STATUS.finished, label: 'Finished' },
-  { key: STATUS.abandoned, label: 'Abandoned' },
+  ...[STATUS.reading, STATUS.wantToRead, STATUS.finished, STATUS.abandoned].map((key) => ({ key, label: STATUS_LABEL[key] })),
 ]
 
 type Sort = 'recent' | 'title' | 'rating'

@@ -591,6 +591,12 @@ p {
   border-color: var(--ink);
 }
 
+.segmented button[aria-pressed='true']::before {
+  content: '✓ ';
+  /* Decorative: aria-pressed already says it's chosen. */
+  content: '✓ ' / '';
+}
+
 .chips {
   display: flex;
   gap: 6px;
@@ -1462,31 +1468,6 @@ p {
 }
 
 /* ——— Search results ——— */
-
-.results {
-  list-style: none;
-  margin: 24px 0 0;
-  padding: 0;
-}
-
-.result {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.result h3 {
-  overflow-wrap: anywhere;
-}
-
-.result .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
 
 /* ——— Login ——— */
 
@@ -2492,15 +2473,6 @@ li.fix-item {
   max-width: 100%;
 }
 
-.quick-add .row {
-  gap: 6px;
-}
-
-.quick-mine {
-  display: inline-flex;
-  text-decoration: none;
-}
-
 .next-up {
   display: flex;
   flex-wrap: wrap;
@@ -2963,10 +2935,6 @@ a.chip:hover {
   justify-content: flex-end;
 }
 
-.card-actions .quick-add .row {
-  flex-wrap: nowrap;
-}
-
 .more-btn {
   flex: none;
   width: 34px;
@@ -3036,6 +3004,270 @@ a.chip:hover {
   justify-content: center;
 }
 
+/* A book card's foot spans the card: cover and details above, your status below (#106). */
+.book-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 12px;
+}
+
+.book-card > .card-actions {
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0;
+}
+
+.book-card > .card-actions:empty {
+  display: none;
+}
+
+.book-card-compact {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  row-gap: 10px;
+}
+
+/* Your status for a book (#106): neutral segments; the chosen one fills and gains a tick. */
+.status-control {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+}
+
+.status-control > button {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.status-control > button:first-child {
+  border-left: 0;
+  border-radius: 999px 0 0 999px;
+}
+
+.status-control > .status-more {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 0 999px 999px 0;
+}
+
+.status-control > .status-more.is-chosen {
+  flex: 0 1 auto;
+}
+
+.status-control > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-control > button:hover {
+  background: var(--paper-sunk);
+}
+
+.status-control > :is(button[aria-pressed='true'], .status-more.is-chosen) {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.status-control[aria-busy='true'] > button {
+  cursor: progress;
+}
+
+/* Compact and inset cards: the same segments as icons, named on hover. */
+.status-icons {
+  max-width: 280px;
+}
+
+.status-icons > button,
+.status-icons > .status-more {
+  flex: 1 1 0;
+  padding: 6px 4px;
+}
+
+/* Its menu: Abandoned and Not Interested, then the rest; a tick marks what's true. */
+.status-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-menu button::before {
+  content: '';
+  flex: none;
+  width: 1em;
+}
+
+.status-menu button[aria-pressed='true']::before {
+  content: '✓';
+  content: '✓' / '';
+}
+
+.status-menu hr {
+  margin: 4px 6px;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* Search results: what's known about each edition, and whether BookHive has it. */
+.search-facts {
+  margin: 0;
+}
+
+.on-bookhive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--finished);
+}
+
+/* What a change did, with Undo (#106): a manual popover at the foot of the window. */
+.toast {
+  inset: auto auto 24px 50%;
+  translate: -50% 0;
+  margin: 0;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 6px 6px 6px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+  font-size: 0.92rem;
+}
+
+.toast:popover-open {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toast-error {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.toast-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.toast-action,
+.toast-close {
+  min-height: 36px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.toast-action {
+  padding: 6px 10px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toast-close {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  opacity: 0.75;
+}
+
+:is(.toast-action, .toast-close):hover {
+  background: rgb(127 127 127 / 0.2);
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .toast {
+    bottom: calc(var(--nav-height) + 12px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast {
+    opacity: 0;
+    translate: -50% 8px;
+    transition: opacity 0.15s, translate 0.15s, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
+  }
+
+  .toast:popover-open {
+    opacity: 1;
+    translate: -50% 0;
+
+    @starting-style {
+      opacity: 0;
+      translate: -50% 8px;
+    }
+  }
+}
+
+/* Dialogs (#106): native modals; the page behind is inert and doesn't scroll. */
+.dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgb(29 27 23 / 0.4);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.dialog-sub {
+  margin: 4px 0 16px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 /* ⋯ More: a popover of plain buttons and links, placed by its button. */
 .more-menu {
   position: fixed;
@@ -3075,7 +3307,7 @@ a.chip:hover {
 }
 
 @supports (position-area: block-end) {
-  .more-btn + .more-menu {
+  :is(.more-btn + .more-menu, .status-more + .status-menu) {
     position-area: block-end span-inline-start;
     position-try-fallbacks: flip-block, flip-inline;
   }

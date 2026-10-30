@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { BookIdentifiers } from '../lib/bookhive/types'
 import { describeError } from '../lib/errors'
 import { plural } from '../lib/format'
-import { isPopfeedShelf, itemIsBook, listTags, parseTags, type BookList, type ListBook } from '../lib/lists'
+import { isPopfeedShelf, itemIsBook, listTags, notInterestedList, parseTags, type BookList, type ListBook } from '../lib/lists'
 import type { WRITE_SCOPES } from '../lib/oauthConfig'
 import { shelfPath } from '../lib/paths'
 import { useListWrites, useLists } from '../lib/useLists'
@@ -156,16 +156,16 @@ export function NewListForm({ onCreated, compact = false }: { onCreated?: (list:
   )
 }
 
-/** On a book page: which of your lists hold it, with one-tap add and remove. */
-export function AddToList({ did, book }: { did: string; book: ListBook & { identifiers?: BookIdentifiers } }) {
+/** Your own lists, ticked where they hold the book: tap to add or take it off, or make a new list with it. */
+function ListChecklist({ did, book }: { did: string; book: ListBook & { identifiers?: BookIdentifiers } }) {
   const lists = useLists(did)
   const { add, removeItem } = useListWrites()
   const { allowed } = useCanWrite('lists')
-  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const own = (lists.data ?? []).filter((l) => !isPopfeedShelf(l))
-  const holding = own.filter((l) => l.items.some((i) => itemIsBook(i, book)))
+  // Not Interested is a state, set from the book's status menu, not a list you pick.
+  const passed = notInterestedList(lists.data ?? [])
+  const own = (lists.data ?? []).filter((l) => !isPopfeedShelf(l) && l !== passed)
 
   const toggle = async (list: BookList) => {
     setBusy(list.uri)
@@ -181,6 +181,42 @@ export function AddToList({ did, book }: { did: string; book: ListBook & { ident
     }
   }
 
+  if (!allowed) return <PermissionNote scope="lists" what="lists" />
+  return (
+    <>
+      {own.length > 0 && (
+        <ul className="check-list">
+          {own.map((list) => {
+            const on = list.items.some((i) => itemIsBook(i, book))
+            return (
+              <li key={list.uri}>
+                <label className="checkbox">
+                  <input type="checkbox" checked={on} disabled={busy !== null} onChange={() => void toggle(list)} /> {list.value.name}{' '}
+                  <span className="muted small">({list.items.length})</span>
+                  {busy === list.uri && <span className="muted small"> saving…</span>}
+                </label>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <NewListForm compact onCreated={(list) => void toggle(list)} />
+      {error && (
+        <div className="notice notice-error" role="alert">
+          {error}
+        </div>
+      )}
+    </>
+  )
+}
+
+/** On a book page: which of your lists hold it, with one-tap add and remove. */
+export function AddToList({ did, book }: { did: string; book: ListBook & { identifiers?: BookIdentifiers } }) {
+  const lists = useLists(did)
+  const [open, setOpen] = useState(false)
+  const passed = notInterestedList(lists.data ?? [])
+  const holding = (lists.data ?? []).filter((l) => !isPopfeedShelf(l) && l !== passed && l.items.some((i) => itemIsBook(i, book)))
+
   return (
     <div className="add-to-list">
       <div className="row">
@@ -195,36 +231,36 @@ export function AddToList({ did, book }: { did: string; book: ListBook & { ident
       </div>
       {open && (
         <div className="panel add-to-list-panel">
-          {!allowed ? (
-            <PermissionNote scope="lists" what="lists" />
-          ) : (
-            <>
-              {own.length > 0 && (
-                <ul className="check-list">
-                  {own.map((list) => {
-                    const on = list.items.some((i) => itemIsBook(i, book))
-                    return (
-                      <li key={list.uri}>
-                        <label className="checkbox">
-                          <input type="checkbox" checked={on} disabled={busy !== null} onChange={() => void toggle(list)} />{' '}
-                          {list.value.name} <span className="muted small">({list.items.length})</span>
-                          {busy === list.uri && <span className="muted small"> saving…</span>}
-                        </label>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              <NewListForm compact onCreated={(list) => void toggle(list)} />
-              {error && (
-                <div className="notice notice-error" role="alert">
-                  {error}
-                </div>
-              )}
-            </>
-          )}
+          <ListChecklist did={did} book={book} />
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Add to a list, from a card's ⋯ menu (#106): the same checklist in a modal
+ * dialog. Escape, Done or a click outside closes it; focus goes back to ⋯.
+ */
+export function AddToListDialog({ did, book, onClose }: { did: string; book: ListBook & { identifiers?: BookIdentifiers }; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
+  useEffect(() => {
+    const el = ref.current
+    if (!el || el.open) return
+    el.setAttribute('closedby', 'any')
+    el.showModal()
+  }, [])
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby={titleId} onClose={onClose}>
+      <h2 id={titleId} className="dialog-title">
+        Add to a list
+      </h2>
+      <p className="muted small dialog-sub">{book.title}</p>
+      <ListChecklist did={did} book={book} />
+      <form method="dialog" className="dialog-actions">
+        <button className="btn btn-primary btn-sm">Done</button>
+      </form>
+    </dialog>
   )
 }

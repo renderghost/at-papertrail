@@ -130,21 +130,13 @@ export function recommendFor<R extends { profile: Profile; books: BookEntry[] }>
 
 const NOT_FOR_ME = 'papertrail-not-for-me:'
 
-/** Books you've waved away, kept in this browser only. */
+/** Books waved away as "Not for me" before Not Interested (#106) existed, kept in this browser only. */
 export function loadNotForMe(did: string): string[] {
   try {
     const raw = JSON.parse(localStorage.getItem(NOT_FOR_ME + did) ?? '[]') as unknown
     return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
   } catch {
     return []
-  }
-}
-
-export function saveNotForMe(did: string, hiveIds: string[]): void {
-  try {
-    localStorage.setItem(NOT_FOR_ME + did, JSON.stringify(hiveIds.slice(-500)))
-  } catch {
-    // Private mode: it just won't be remembered.
   }
 }
 
