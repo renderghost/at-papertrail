@@ -70,6 +70,7 @@ export function BookCard({
         title={book.title}
         authors={book.authors}
         entry={book.entry}
+        isbn13={book.identifiers?.isbn13}
         fallbackUrl={book.coverUrl ?? book.catalog?.cover ?? book.catalog?.thumbnail}
         size={size === 'compact' ? 'fill' : 'sm'}
       />
