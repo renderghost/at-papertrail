@@ -130,6 +130,11 @@ try {
     if (res.headers.get(header)) pass(`${header} header`)
     else fail(`${header} header`, 'missing (is vercel.json deployed?)')
   }
+  // The barcode scanner needs the camera, and WebAssembly where the browser has no reader of its own (iPhones).
+  if (/camera=\(self\)/.test(res.headers.get('permissions-policy') ?? '')) pass('the scanner may use the camera')
+  else fail('the scanner may use the camera', `Permissions-Policy is "${res.headers.get('permissions-policy')}", without camera=(self)`)
+  if (/script-src[^;]*'wasm-unsafe-eval'/.test(res.headers.get('content-security-policy') ?? '')) pass("the scanner's WebAssembly decoder may run")
+  else fail("the scanner's WebAssembly decoder may run", "script-src lacks 'wasm-unsafe-eval', so iPhones can't read barcodes")
 } catch (err) {
   fail('the site serves the app', err.message)
 }

@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getProfile } from './atproto'
 import { useMaybeSession, useSession } from './auth'
 import { getHiveBook } from './bookhive/api'
 import { fetchCatalogBook } from './bookhive/catalog'
 import { createBook, deleteBook, loadLibrary, updateBook } from './bookhive/library'
-import type { BookEntry, BookRecord } from './bookhive/types'
+import type { BookEntry, BookIdentifiers, BookRecord } from './bookhive/types'
+import { bookKeys, libraryIndex } from './import/match'
 
 const HOUR = 60 * 60 * 1000
 
@@ -63,6 +64,18 @@ export function useLibrary(did: string | undefined) {
 /** The signed-in user's library; disabled (no data, not loading) when signed out. */
 export function useMyLibrary() {
   return useLibrary(useMaybeSession()?.did)
+}
+
+/** Your copy of a book, matched by hiveId, ISBN, Goodreads id, or title and first author. */
+export function useMyCopy(
+  book: { hiveId: string; title: string; authors: string; identifiers?: BookIdentifiers } | null | undefined,
+): BookEntry | undefined {
+  const library = useMyLibrary()
+  const index = useMemo(() => libraryIndex(library.data ?? []), [library.data])
+  if (!book) return undefined
+  return bookKeys(book)
+    .map((k) => index.get(k))
+    .find(Boolean)
 }
 
 /** Create, update and delete the signed-in user's book records, keeping the cache in step. */

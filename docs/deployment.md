@@ -88,7 +88,7 @@ Every build stamps `index.html` with the commit it was built from (`<meta name="
 - `client-metadata.json` returns 200 **without a redirect**, as `application/json`
 - its `client_id` is its own URL, its `redirect_uris` include the site, and it is a public DPoP client with the `atproto` scope
 - the site is **served by Vercel** (catches DNS still pointing elsewhere)
-- the app loads with its security headers (CSP, HSTS, nosniff, Referrer-Policy)
+- the app loads with its security headers (CSP, HSTS, nosniff, Referrer-Policy), including the camera and WebAssembly allowances the barcode scanner needs
 - deep links serve the app, and missing assets are real 404s
 - the BookHive relay function answers
 - a link-preview crawler gets a share card for a book page, and a browser gets the app on the same URL
@@ -149,9 +149,11 @@ Set in `vercel.json` for every response:
 
 - **Content-Security-Policy:**
   - scripts, styles and fonts from the site itself only
+  - `'wasm-unsafe-eval'` in `script-src`, for the barcode scanner's WebAssembly decoder (zxing-wasm, served from `/assets/`) on browsers without a built-in one, such as every iOS browser. It allows compiling WebAssembly only; JavaScript `eval` stays blocked.
   - images and network requests to any `https:` origin (people's PDSes, covers and the directories live anywhere)
   - no plugins, no framing
-- **Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy**
+- **Permissions-Policy:** the camera for this site only (`camera=(self)`), for scanning barcodes. Microphone, location, payment and USB stay off.
+- **Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Cross-Origin-Opener-Policy**
 
 If a new feature loads something the policy blocks, the browser console shows a `Refused to …` error. Widen only the directive it names.
 
@@ -185,4 +187,6 @@ Use `127.0.0.1`, not `localhost`: atproto's loopback OAuth client redirects ther
 | A signed-in reader sees "Papertrail needs your permission to save lists to your PDS" (or favourites, or follows) | Their session predates those OAuth scopes | Expected once per reader: **Sign in again** asks their PDS for the new scopes and returns to the same page |
 | Book pages show no BookHive reviews; `/api/bookhive/getBook` returns `502` | bookhive.buzz is down or slow | Nothing to fix here; the page falls back to catalogue records |
 | Browser console: `Refused to load …` | The Content-Security-Policy blocked something new | Widen the named directive in `vercel.json` |
+| The scanner says the camera was blocked, though the browser allowed it | `Permissions-Policy` lost `camera=(self)` | Restore it in `vercel.json` |
+| Scanning works in Chrome but never finds a barcode on an iPhone | The WebAssembly decoder was refused: `script-src` lost `'wasm-unsafe-eval'` (the console says so) | Restore it in `vercel.json` |
 | A page loads blank after a deploy, with a 404 for `/assets/…` | A tab open from before the deploy requested an old asset | Reload; hashed assets are replaced on every deploy |

@@ -2451,3 +2451,246 @@ p {
 .export-options .panel + .panel {
   margin-top: 0;
 }
+
+/* ——— Series, owned books and the scanner (M4b) ——— */
+
+.chip[aria-selected='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.shelf-filters {
+  gap: 8px;
+  /* Lets the chip rows scroll sideways instead of widening the page. */
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.quick-add .row {
+  gap: 6px;
+}
+
+.quick-mine {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.next-up {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.next-up p {
+  margin: 0;
+}
+
+.series-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 132px;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.series-strip li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  scroll-snap-align: start;
+  padding: 8px;
+  border-radius: var(--radius);
+}
+
+.series-strip li.current {
+  background: var(--paper-sunk);
+}
+
+.series-strip .name,
+.continue-series .name,
+.series-books .name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.continue-series {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.continue-series li,
+.series-books li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.continue-body,
+.series-book-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.series-progress {
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+.series-books {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.series-books li {
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.series-books li.next {
+  box-shadow: inset 3px 0 0 var(--accent);
+  padding-left: 12px;
+}
+
+.series-books li.extra .name {
+  font-weight: 500;
+}
+
+.series-book-state {
+  gap: 8px;
+}
+
+.scan-modes {
+  margin-bottom: 6px;
+}
+
+.scan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .scan-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+
+.viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.viewfinder-guide {
+  position: absolute;
+  inset: 32% 12%;
+  border: 2px solid rgb(255 255 255 / 0.85);
+  border-radius: 8px;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.25);
+}
+
+.viewfinder-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--paper);
+}
+
+.scan-status {
+  min-height: 1.5em;
+  margin-top: 8px;
+}
+
+.manual-isbn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.manual-isbn .row {
+  flex-wrap: nowrap;
+}
+
+.manual-isbn .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.scan-book {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.scan-book h2 {
+  font-size: 1.4rem;
+  overflow-wrap: anywhere;
+}
+
+.shelf-scans {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shelf-scan {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.shelf-scan-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shelf-scan-undone,
+.shelf-scan-missing {
+  opacity: 0.6;
+}
+
+.cover-blank {
+  width: 40px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px;
+  background: var(--paper-sunk);
+  flex: none;
+}

@@ -27,6 +27,11 @@ export function authorPath(name: string): string {
   return `/authors/${encodeURIComponent(name)}`
 }
 
+/** A series, under its author: there's no series id to key it by. */
+export function seriesPath(author: string, title: string): string {
+  return `${authorPath(author)}/series/${encodeURIComponent(title)}`
+}
+
 /** A reader's lists. */
 export function shelvesPath(handleOrDid: string): string {
   return `/shelves/${handleOrDid}`

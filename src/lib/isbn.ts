@@ -42,3 +42,28 @@ export function isbnKeys(ids: { isbn10?: string; isbn13?: string } | undefined):
   }
   return [...keys]
 }
+
+function checksumOk13(digits: string): boolean {
+  let sum = 0
+  for (let i = 0; i < 12; i++) sum += (i % 2 === 0 ? 1 : 3) * Number(digits[i])
+  return (10 - (sum % 10)) % 10 === Number(digits[12])
+}
+
+function checksumOk10(digits: string): boolean {
+  let sum = 0
+  for (let i = 0; i < 10; i++) sum += (10 - i) * (digits[i] === 'X' ? 10 : Number(digits[i]))
+  return sum % 11 === 0
+}
+
+/** A book's barcode: an EAN-13 in the 978/979 "Bookland" range with a valid check digit. */
+export function isBooklandEan(code: string): boolean {
+  return /^97[89]\d{10}$/.test(code) && checksumOk13(code)
+}
+
+/** A typed ISBN (10 or 13 digits, hyphens and spaces allowed) as a checked ISBN-13, or null. */
+export function parseIsbn(text: string): string | null {
+  const digits = cleanIsbn(text)
+  if (digits.length === 13) return isBooklandEan(digits) ? digits : null
+  if (digits.length === 10 && /^\d{9}[\dX]$/.test(digits) && checksumOk10(digits)) return isbn10To13(digits)
+  return null
+}

@@ -21,6 +21,8 @@ const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m
 const ExportPage = lazy(() => import('./pages/Export').then((m) => ({ default: m.ExportPage })))
 const FixPage = lazy(() => import('./pages/Fix').then((m) => ({ default: m.FixPage })))
 const SwitchPage = lazy(() => import('./pages/Switch').then((m) => ({ default: m.SwitchPage })))
+const ScanPage = lazy(() => import('./pages/Scan').then((m) => ({ default: m.ScanPage })))
+const SeriesPage = lazy(() => import('./pages/SeriesPage').then((m) => ({ default: m.SeriesPage })))
 
 function OnDemand({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Loading />}>{children}</Suspense>
@@ -70,6 +72,7 @@ function AppRoutes() {
         <Route path="books/:hiveId" element={<BookPage />} />
         <Route path="profile/:actor" element={<Profile />} />
         <Route path="authors/:name" element={<AuthorPage />} />
+        <Route path="authors/:name/series/:series" element={<OnDemand><SeriesPage /></OnDemand>} />
         <Route path="shelves/:actor" element={<ListsPage />} />
         <Route path="shelves/:actor/:rkey" element={<ListPage />} />
         <Route path="switch" element={<OnDemand><SwitchPage /></OnDemand>} />
@@ -83,6 +86,7 @@ function AppRoutes() {
           <Route path="import" element={<OnDemand><ImportPage /></OnDemand>} />
           <Route path="export" element={<OnDemand><ExportPage /></OnDemand>} />
           <Route path="fix" element={<OnDemand><FixPage /></OnDemand>} />
+          <Route path="scan" element={<OnDemand><ScanPage /></OnDemand>} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
