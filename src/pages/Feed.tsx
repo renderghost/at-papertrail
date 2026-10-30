@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar, Empty, Stars } from '../components/bits'
-import { Cover } from '../components/Cover'
+import { BookCard } from '../components/Cards'
 import { NetworkScan } from '../components/NetworkScan'
 import { useSession } from '../lib/auth'
-import { displayAuthors } from '../lib/bookhive/authors'
 import { buildFeed, FEED_FILTERS, matchesFilter, type FeedEvent, type FeedEventKind } from '../lib/feed'
 import { displayName, formatRelativeDay, truncate } from '../lib/format'
 import { useNetwork } from '../lib/network'
-import { bookPath } from '../lib/paths'
+import { profilePath } from '../lib/paths'
 
 const PAGE = 40
 
@@ -81,41 +80,33 @@ export function Feed() {
   )
 }
 
+/** A feed entry (#100): a person card saying what they did, with the book inset as its own card. */
 function FeedItem({ event }: { event: FeedEvent }) {
   const { profile, entry } = event
   const v = entry.value
   return (
     <li className="feed-item">
-      <Link to={`/profile/${profile.handle}`} aria-label={displayName(profile)}>
-        <Avatar profile={profile} />
-      </Link>
-      <div style={{ minWidth: 0 }}>
-        <div className="who">
-          <Link to={`/profile/${profile.handle}`} style={{ textDecoration: 'none' }}>
-            <strong>{displayName(profile)}</strong>
-          </Link>{' '}
-          <span className="verb">
-            {event.earlierRead ? 'read' : VERB[event.kind]}
-          </span>
-        </div>
-        <Link className="what" to={bookPath(v.hiveId)} state={{ entry }}>
-          {v.title}
+      <article className="feed-entry">
+        <Link to={profilePath(profile.handle)} tabIndex={-1} aria-hidden="true">
+          <Avatar profile={profile} />
         </Link>
-        <div className="muted small">{displayAuthors(v.authors)}</div>
-        {event.stars ? (
-          <div style={{ marginTop: 6 }}>
-            <Stars stars={event.stars} />
-          </div>
-        ) : null}
-        {event.review && <p className="review">{truncate(event.review, 360)}</p>}
-        <div className="when">
-          {formatRelativeDay(event.date)}
-          {event.earlierRead ? ' · an earlier read' : ''}
+        <div className="feed-body">
+          <p className="who">
+            <Link to={profilePath(profile.handle)}>
+              <strong>{displayName(profile)}</strong>
+            </Link>{' '}
+            <span className="verb">{event.earlierRead ? 'read' : VERB[event.kind]}</span>
+            <span className="when">
+              {' · '}
+              {formatRelativeDay(event.date)}
+              {event.earlierRead ? ' · an earlier read' : ''}
+            </span>
+          </p>
+          {event.stars ? <Stars stars={event.stars} /> : null}
+          {event.review && <p className="review">{truncate(event.review, 360)}</p>}
+          <BookCard size="embed" book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry }} state={{ entry }} />
         </div>
-      </div>
-      <Link to={bookPath(v.hiveId)} state={{ entry }} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
-      </Link>
+      </article>
     </li>
   )
 }

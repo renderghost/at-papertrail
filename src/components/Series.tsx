@@ -8,8 +8,7 @@ import { useMyLibrary } from '../lib/hooks'
 import { bookPath, seriesPath } from '../lib/paths'
 import { findInSeries, hasRead, seriesOf, seriesOrder, seriesProgress, type SeriesBook } from '../lib/series'
 import { useAuthorSeries } from '../lib/usePeople'
-import { StatusPill } from './bits'
-import { Cover } from './Cover'
+import { BookCard, CardGrid } from './Cards'
 import { QuickAdd } from './QuickAdd'
 
 const HOUR = 60 * 60 * 1000
@@ -68,30 +67,29 @@ export function SeriesSection({ book, mine }: { book: CatalogBook | null; mine: 
           <QuickAdd book={quickBook(after.book)} />
         </div>
       )}
-      <ol className="series-strip">
+      <CardGrid size="compact" className="series-strip" label={`${series.title}, in order`}>
         {shown.map((b) => (
           <SeriesItem key={b.book.id} item={b} current={b.book.id === book!.id} next={b === after} />
         ))}
-      </ol>
+      </CardGrid>
     </section>
   )
 }
 
 function SeriesItem({ item, current, next }: { item: SeriesBook; current: boolean; next: boolean }) {
   return (
-    <li className={current ? 'current' : undefined} aria-current={current ? 'page' : undefined}>
-      <Link to={bookPath(item.book.id)} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={item.book.id} title={item.book.title} authors={item.book.authors} fallbackUrl={item.book.cover || item.book.thumbnail} size="sm" />
-      </Link>
-      <span className="small muted">
-        {positionLabel(item.position)}
-        {next ? ' · next' : ''}
-      </span>
-      <Link className="name" to={bookPath(item.book.id)}>
-        {item.book.title}
-      </Link>
-      {item.entry && <StatusPill status={item.entry.value.status} />}
-    </li>
+    <BookCard
+      size="compact"
+      book={{ ...quickBook(item.book), entry: item.entry }}
+      context={
+        <p>
+          {current ? 'This book' : positionLabel(item.position) || 'Unnumbered'}
+          {current && item.position ? ` · ${positionLabel(item.position).toLowerCase()}` : ''}
+          {next ? ' · next' : ''}
+        </p>
+      }
+      action={current ? null : undefined}
+    />
   )
 }
 
@@ -161,25 +159,20 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
         <h2>Continue a series</h2>
         <span className="count">{items.length}</span>
       </div>
-      <ul className="continue-series">
+      <CardGrid size="large" className="continue-series" label="Continue a series">
         {items.map(({ series: s, next }) => (
-          <li key={`${s.author}|${s.title}`}>
-            <Link to={bookPath(next.book.id)} tabIndex={-1} aria-hidden="true">
-              <Cover hiveId={next.book.id} title={next.book.title} authors={next.book.authors} fallbackUrl={next.book.cover || next.book.thumbnail} size="sm" />
-            </Link>
-            <div className="continue-body">
-              <Link className="small muted" to={seriesPath(s.author, s.title)}>
+          <BookCard
+            key={`${s.author}|${s.title}`}
+            book={{ ...quickBook(next.book), entry: next.entry }}
+            context={
+              <Link to={seriesPath(s.author, s.title)}>
                 {next.position ? `Book ${next.position} of ` : ''}
                 {s.title}
               </Link>
-              <Link className="name" to={bookPath(next.book.id)}>
-                {next.book.title}
-              </Link>
-              <QuickAdd book={quickBook(next.book)} />
-            </div>
-          </li>
+            }
+          />
         ))}
-      </ul>
+      </CardGrid>
     </section>
   )
 }

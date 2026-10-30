@@ -1,12 +1,8 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import type { BookEntry } from '../lib/bookhive/types'
 import { displayName } from '../lib/format'
-import { bookPath } from '../lib/paths'
 import { describeMatch, type Shared, type TasteMatch } from '../lib/taste'
 import { Stars } from './bits'
-import { Cover } from './Cover'
-import { QuickAdd } from './QuickAdd'
+import { BookCard, CardGrid } from './Cards'
 
 /** "84% match", with what it's based on. */
 export function MatchLine({ match }: { match: TasteMatch }) {
@@ -16,21 +12,6 @@ export function MatchLine({ match }: { match: TasteMatch }) {
       <strong className={match.score === null ? 'muted' : undefined}>{headline}</strong>
       <span className="small muted">{detail}</span>
     </div>
-  )
-}
-
-function BookCard({ entry, children }: { entry: BookEntry; children?: ReactNode }) {
-  const v = entry.value
-  return (
-    <li>
-      <Link to={bookPath(v.hiveId)} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
-      </Link>
-      <Link className="name" to={bookPath(v.hiveId)}>
-        {v.title}
-      </Link>
-      {children}
-    </li>
   )
 }
 
@@ -47,63 +28,52 @@ export function TasteSection({ match, name }: { match: TasteMatch; name: string 
       {match.bothLoved.length > 0 && (
         <>
           <h3 className="club-group-label">You both loved</h3>
-          <ul className="series-strip">
-            {match.bothLoved.slice(0, 12).map((s) => (
-              <BookCard key={s.mine.uri} entry={s.mine} />
+          <CardGrid size="compact" label="You both loved">
+            {match.bothLoved.slice(0, 10).map((s) => (
+              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} context={<Both pair={s} name={name} />} />
             ))}
-          </ul>
+          </CardGrid>
         </>
       )}
 
       {match.disagreements.length > 0 && (
         <>
           <h3 className="club-group-label">Where you disagree most</h3>
-          <ul className="members">
+          <CardGrid size="compact" label="Where you disagree most">
             {match.disagreements.slice(0, 5).map((s) => (
-              <Disagreement key={s.mine.uri} pair={s} name={name} />
+              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} action={null} context={<Both pair={s} name={name} />} />
             ))}
-          </ul>
+          </CardGrid>
         </>
       )}
 
       {match.theirPicks.length > 0 && (
         <>
           <h3 className="club-group-label">Their favourites you haven't read</h3>
-          <ul className="series-strip">
-            {match.theirPicks.slice(0, 12).map((b) => (
-              <BookCard key={b.uri} entry={b}>
-                <Stars stars={b.value.stars} size={12} />
-                <QuickAdd book={{ hiveId: b.value.hiveId, title: b.value.title, authors: b.value.authors, identifiers: b.value.identifiers, catalog: null }} />
-              </BookCard>
+          <CardGrid size="compact" label="Their favourites you haven't read">
+            {match.theirPicks.slice(0, 10).map((b) => (
+              <BookCard key={b.uri} size="compact" book={cardBook(b)} context={<Stars stars={b.value.stars} size={12} />} />
             ))}
-          </ul>
+          </CardGrid>
         </>
       )}
     </section>
   )
 }
 
-function Disagreement({ pair, name }: { pair: Shared; name: string }) {
-  const v = pair.mine.value
+const cardBook = (e: BookEntry) => ({ hiveId: e.value.hiveId, title: e.value.title, authors: e.value.authors, identifiers: e.value.identifiers, entry: e })
+
+/** Both ratings side by side. */
+function Both({ pair, name }: { pair: Shared; name: string }) {
   return (
-    <li className="member">
-      <Link to={bookPath(v.hiveId)} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={pair.mine} size="sm" />
-      </Link>
-      <div className="body">
-        <Link className="name" to={bookPath(v.hiveId)}>
-          {v.title}
-        </Link>
-        <div className="small disagreement">
-          <span>
-            You <Stars stars={pair.myStars} size={12} />
-          </span>
-          <span>
-            {name} <Stars stars={pair.theirStars} size={12} />
-          </span>
-        </div>
-      </div>
-    </li>
+    <p className="disagreement">
+      <span>
+        You <Stars stars={pair.myStars} size={12} />
+      </span>
+      <span>
+        {name} <Stars stars={pair.theirStars} size={12} />
+      </span>
+    </p>
   )
 }
 

@@ -1,11 +1,10 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar, Empty, ErrorNote, Loading, Stars, StatusPill } from '../components/bits'
-import { Cover } from '../components/Cover'
+import { BookCard, CardGrid } from '../components/Cards'
 import { Icon } from '../components/Icon'
 import { NetworkScan } from '../components/NetworkScan'
 import { useSession } from '../lib/auth'
-import { displayAuthors } from '../lib/bookhive/authors'
 import { STATUS, type BookEntry } from '../lib/bookhive/types'
 import { displayName } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
@@ -65,11 +64,11 @@ export function WantToReadPage() {
           <p>Mark books as Want to read and your network's take on them will gather here.</p>
         </Empty>
       ) : (
-        <ol className="members asked">
+        <CardGrid size="list" className="asked" label="Your want-to-read list">
           {rows.map((row) => (
             <AskedBook key={row.entry.uri} row={row} />
           ))}
-        </ol>
+        </CardGrid>
       )}
     </>
   )
@@ -78,40 +77,34 @@ export function WantToReadPage() {
 function AskedBook({ row: { entry, copies, take } }: { row: Row }) {
   const v = entry.value
   const tried = copies.filter((c) => c.entry.value.status !== STATUS.wantToRead)
+  const ask = tried.length
+    ? askUrl(
+        v.title,
+        tried.map((c) => c.reader.profile.handle),
+        new URL(bookPath(v.hiveId), window.location.origin).href,
+      )
+    : null
   return (
-    <li className="member">
-      <Link to={bookPath(v.hiveId)} state={{ entry }} tabIndex={-1} aria-hidden="true">
-        <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="sm" />
-      </Link>
-      <div className="body">
-        <Link className="name" to={bookPath(v.hiveId)} state={{ entry }}>
-          {v.title}
-        </Link>
-        <div className="small muted">{displayAuthors(v.authors)}</div>
-        <p className="small verdict">{describeTake(take)}</p>
-        {copies.length > 0 && (
-          <ul className="network-copies">
-            {copies.slice(0, 8).map((c) => (
-              <NetworkCopyLine key={c.reader.profile.did} copy={c} />
-            ))}
-          </ul>
-        )}
-        {tried.length > 0 && (
-          <a
-            className="btn btn-sm"
-            href={askUrl(
-              v.title,
-              tried.map((c) => c.reader.profile.handle),
-              new URL(bookPath(v.hiveId), window.location.origin).href,
-            )}
-            target="_blank"
-            rel="noreferrer"
-          >
+    <BookCard
+      book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry }}
+      state={{ entry }}
+      context={<p className="verdict">{describeTake(take)}</p>}
+      action={
+        ask ? (
+          <a className="btn btn-sm" href={ask} target="_blank" rel="noreferrer">
             <Icon name="chat" size={16} /> Ask them on Bluesky
           </a>
-        )}
-      </div>
-    </li>
+        ) : null
+      }
+    >
+      {copies.length > 0 && (
+        <ul className="card-people network-copies">
+          {copies.slice(0, 8).map((c) => (
+            <NetworkCopyLine key={c.reader.profile.did} copy={c} />
+          ))}
+        </ul>
+      )}
+    </BookCard>
   )
 }
 

@@ -23,7 +23,8 @@ type CoverProps = {
   isbn13?: string
   /** An extra candidate, e.g. a search result's cover. */
   fallbackUrl?: string
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  /** `fill` takes the width of its container (compact cards). */
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'fill'
 }
 
 /**
