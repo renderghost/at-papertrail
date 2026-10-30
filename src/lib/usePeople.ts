@@ -7,6 +7,7 @@ import { FEATURES } from './features'
 import { follow, followUri, unfollow } from './follows'
 import { WRITE_SCOPES } from './oauthConfig'
 import { grants } from './scopes'
+import { withSeries } from './series'
 
 const HOUR = 60 * 60 * 1000
 
@@ -85,4 +86,27 @@ export function useAuthorBooks(name: string | undefined) {
     staleTime: 6 * HOUR,
     retry: false,
   })
+}
+
+/**
+ * An author's books with their series filled in from the catalogue (#96),
+ * for series pages and groups. Pending until every series is known, so a
+ * page lays out once rather than regrouping as they arrive.
+ */
+export function useAuthorSeries(name: string | undefined) {
+  const listing = useAuthorBooks(name)
+  const books = listing.data?.books
+  const series = useQuery({
+    queryKey: ['author-series', name],
+    queryFn: () => withSeries(books!),
+    enabled: !!books,
+    staleTime: 6 * HOUR,
+    retry: false,
+  })
+  return {
+    data: series.data,
+    isPending: listing.isPending || (!!books && series.isPending),
+    isError: listing.isError,
+    error: listing.error,
+  }
 }

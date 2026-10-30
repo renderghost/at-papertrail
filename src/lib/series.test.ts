@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { HiveBook } from './bookhive/api'
 import { STATUS, type BookEntry, type BookRecord } from './bookhive/types'
-import { booksInSeries, seriesOf, seriesProgress } from './series'
+import { booksInSeries, findInSeries, seriesOf, seriesProgress, withSeries } from './series'
 
 const book = (id: string, title: string, position?: string, extra: Partial<HiveBook> = {}): HiveBook => ({
   id,
@@ -68,6 +68,71 @@ describe('seriesProgress', () => {
     const p = seriesProgress(catalogue, 'Earthsea Cycle', library)
     expect(p.read).toBe(4)
     expect(p.next).toBeUndefined()
+  })
+})
+
+describe('editions and box sets', () => {
+  const earthsea = (position: string) => JSON.stringify({ title: 'Earthsea Cycle', position })
+  const shelf = [
+    book('bk_en1', 'A Wizard of Earthsea', '1', { language: 'English', ratingsCount: 379765 }),
+    book('bk_fr1', 'Le sorcier de Terremer', '1', { language: 'French', ratingsCount: 379268 }),
+    book('bk_es2', 'Las tumbas de Atuan', '2', { language: 'Spanish; Castilian', ratingsCount: 142800 }),
+    book('bk_en2', 'The Tombs of Atuan', '2', { language: 'English', ratingsCount: 142704 }),
+    book('bk_box', 'The Earthsea Quartet', undefined, { series: earthsea('1-4'), language: 'English', ratingsCount: 13484 }),
+  ]
+
+  it("lists one edition per book, in the reader's language, with box sets as extras", () => {
+    const p = seriesProgress(shelf, 'Earthsea Cycle', [], 'English')
+    expect(p.books.map((b) => [b.book.id, b.main])).toEqual([
+      ['bk_en1', true],
+      ['bk_en2', true],
+      ['bk_box', false],
+    ])
+    expect(p.total).toBe(2)
+    expect(booksInSeries(shelf, 'Earthsea Cycle', 'French')[0]!.id).toBe('bk_fr1')
+  })
+
+  it('shows your own edition, whatever its language, and counts it as read', () => {
+    const p = seriesProgress(shelf, 'Earthsea Cycle', [entry('bk_fr1', { title: 'Le sorcier de Terremer', status: STATUS.finished })], 'English')
+    expect(p.books[0]).toMatchObject({ book: { id: 'bk_fr1' }, entry: { rkey: 'bk_fr1' } })
+    expect(p.read).toBe(1)
+    expect(p.next?.book.id).toBe('bk_en2')
+  })
+
+  it('reads an unnumbered series in the order listed, but never a box set as next', () => {
+    const plain = [book('bk_a', 'Alpha', undefined, { series: JSON.stringify({ title: 'Earthsea Cycle' }) })]
+    expect(seriesProgress(plain, 'Earthsea Cycle').next?.book.id).toBe('bk_a')
+    const done = seriesProgress(shelf, 'Earthsea Cycle', [entry('bk_en1', { status: STATUS.finished }), entry('bk_en2', { status: STATUS.finished })])
+    expect(done.next).toBeUndefined()
+  })
+})
+
+describe('withSeries', () => {
+  it("fills in series from catalogue records, keeping any the listing had, and survives failures", async () => {
+    const listing = [book('bk_a', 'Alpha'), book('bk_b', 'Beta', '2'), book('bk_c', 'Gamma')]
+    const lookup = vi.fn(async (id: string) => {
+      if (id === 'bk_c') throw new Error('down')
+      return JSON.stringify({ title: 'Earthsea Cycle', position: '1' })
+    })
+    const filled = await withSeries(listing, lookup)
+    expect(filled.map((b) => b.series && JSON.parse(b.series).position)).toEqual(['1', '2', undefined])
+    expect(lookup).not.toHaveBeenCalledWith('bk_b')
+  })
+})
+
+describe('findInSeries', () => {
+  it('stops reading catalogue records once the book and its editions have turned up', async () => {
+    const pos = (title: string, position: string) => JSON.stringify({ title, position })
+    const listing = Array.from({ length: 30 }, (_, i) => book(`bk_${i}`, `Book ${i}`, undefined, { ratingsCount: 100000 - i * 1000 }))
+    // The sequel is the 3rd most popular; its translation sits right beside it.
+    const series: Record<string, string> = { bk_2: pos('Earthsea Cycle', '2'), bk_3: pos('Earthsea Cycle', '2'), bk_29: pos('Earthsea Cycle', '3') }
+    listing[3]!.ratingsCount = listing[2]!.ratingsCount! - 50
+    const lookup = vi.fn(async (id: string) => series[id] ?? null)
+    const found = await findInSeries(listing, 'earthsea cycle', 2, lookup)
+    expect(found.map((b) => b.id)).toEqual(['bk_2', 'bk_3'])
+    // Two batches of six at most, not all thirty books.
+    expect(lookup.mock.calls.length).toBeLessThanOrEqual(12)
+    expect(await findInSeries(listing, 'Earthsea Cycle', 9, lookup)).toEqual([])
   })
 })
 

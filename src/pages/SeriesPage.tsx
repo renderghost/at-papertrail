@@ -13,16 +13,16 @@ import { formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { authorPath, bookPath } from '../lib/paths'
 import { hasRead, seriesProgress } from '../lib/series'
-import { useAuthorBooks, useByline } from '../lib/usePeople'
+import { useAuthorSeries, useByline } from '../lib/usePeople'
 
 /** A series in reading order, and where you are in it (#61). Public. */
 export function SeriesPage() {
   const { name = '', series = '' } = useParams()
   const me = useMaybeSession()
-  const books = useAuthorBooks(name)
+  const books = useAuthorSeries(name)
   const library = useMyLibrary()
   const byline = useByline()
-  const progress = useMemo(() => (books.data ? seriesProgress(books.data.books, series, library.data ?? []) : null), [books.data, series, library.data])
+  const progress = useMemo(() => (books.data ? seriesProgress(books.data, series, library.data ?? []) : null), [books.data, series, library.data])
   // The catalogue's own spelling of the name, rather than the URL's.
   const title = parseSeries(progress?.books[0]?.book.series)?.title ?? series
   useDocumentTitle(title)
@@ -81,7 +81,7 @@ export function SeriesPage() {
               <div className="series-book-body">
                 <span className="small muted">
                   {positionLabel(b.position) || 'Unnumbered'}
-                  {!b.main ? ' · novella or extra' : ''}
+                  {!b.main ? (b.position?.includes('-') ? ' · collection' : ' · novella or extra') : ''}
                   {b.book.publicationYear ? ` · ${b.book.publicationYear}` : ''}
                 </span>
                 <Link className="name" to={bookPath(b.book.id)}>

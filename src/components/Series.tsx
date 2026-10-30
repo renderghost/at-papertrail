@@ -1,4 +1,4 @@
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getAuthorBooks, type HiveBook } from '../lib/bookhive/api'
@@ -6,8 +6,8 @@ import { fetchCatalogBook } from '../lib/bookhive/catalog'
 import { STATUS, type BookEntry, type CatalogBook } from '../lib/bookhive/types'
 import { useMyLibrary } from '../lib/hooks'
 import { bookPath, seriesPath } from '../lib/paths'
-import { hasRead, seriesOf, seriesProgress, type SeriesBook } from '../lib/series'
-import { useAuthorBooks } from '../lib/usePeople'
+import { findInSeries, hasRead, seriesOf, seriesOrder, seriesProgress, type SeriesBook } from '../lib/series'
+import { useAuthorSeries } from '../lib/usePeople'
 import { StatusPill } from './bits'
 import { Cover } from './Cover'
 import { QuickAdd } from './QuickAdd'
@@ -27,11 +27,11 @@ export const quickBook = (b: HiveBook) => ({ hiveId: b.id, title: b.title, autho
  */
 export function SeriesSection({ book, mine }: { book: CatalogBook | null; mine: BookEntry | undefined }) {
   const series = seriesOf(book)
-  const authorBooks = useAuthorBooks(series?.author)
+  const authorBooks = useAuthorSeries(series?.author)
   const library = useMyLibrary()
   const title = series?.title
   const progress = useMemo(
-    () => (title && authorBooks.data ? seriesProgress(authorBooks.data.books, title, library.data ?? []) : null),
+    () => (title && authorBooks.data ? seriesProgress(authorBooks.data, title, library.data ?? []) : null),
     [title, authorBooks.data, library.data],
   )
 
@@ -116,30 +116,41 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
       gcTime: 6 * HOUR,
     })),
   })
+  // Each series you've read in, and the furthest whole-numbered book of it you've read.
   const series = useMemo(() => {
-    const seen = new Map<string, { title: string; author: string }>()
+    const seen = new Map<string, { title: string; author: string; furthest: number }>()
     for (const q of catalogs) {
       const s = seriesOf(q.data)
-      if (s) seen.set(`${s.author}|${s.title}`.toLowerCase(), s)
+      const order = seriesOrder(s?.position)
+      if (!s || !Number.isInteger(order)) continue
+      const key = `${s.author}|${s.title}`.toLowerCase()
+      seen.set(key, { title: s.title, author: s.author, furthest: Math.max(order, seen.get(key)?.furthest ?? 0) })
     }
-    return [...seen.values()].slice(0, 16)
+    return [...seen.values()].slice(0, 8)
   }, [catalogs])
-  const authors = [...new Set(series.map((s) => s.author))].slice(0, 12)
-  const authorBooks = useQueries({
-    queries: authors.map((a) => ({
-      queryKey: ['author-books', a],
-      queryFn: ({ signal }: { signal: AbortSignal }) => getAuthorBooks(a, signal),
+  // Only as much of each author's list as it takes to find the next book.
+  const queryClient = useQueryClient()
+  const found = useQueries({
+    queries: series.map((s) => ({
+      queryKey: ['series-find', s.author, s.title.toLowerCase(), s.furthest + 1],
+      queryFn: async () => {
+        const listing = await queryClient.fetchQuery({
+          queryKey: ['author-books', s.author],
+          queryFn: ({ signal }) => getAuthorBooks(s.author, signal),
+          staleTime: 6 * HOUR,
+        })
+        return findInSeries(listing.books, s.title, s.furthest + 1)
+      },
       staleTime: 6 * HOUR,
       retry: false,
     })),
   })
-  const byAuthor = new Map(authors.map((a, i) => [a, authorBooks[i]?.data?.books]))
-  const items = series.flatMap((s) => {
-    const books = byAuthor.get(s.author)
-    if (!books) return []
-    const { next, read } = seriesProgress(books, s.title, entries)
-    // Skip what you're already reading, and series you haven't really started.
-    if (!next || !read || next.entry?.value.status === STATUS.reading || next.entry?.value.status === STATUS.abandoned) return []
+  const items = series.flatMap((s, i) => {
+    const editions = found[i]?.data
+    const next = editions?.length ? seriesProgress(editions, s.title, entries).books[0] : undefined
+    // Skip what you're reading, gave up on, or read in another edition.
+    const status = next?.entry?.value.status
+    if (!next || hasRead(next.entry) || status === STATUS.reading || status === STATUS.abandoned) return []
     return [{ series: s, next }]
   })
 
