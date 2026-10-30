@@ -1934,43 +1934,27 @@ p {
   padding: 0;
 }
 
-.list-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
-  padding: 16px 0;
-  border-top: 1px solid var(--rule);
-  align-items: start;
-}
-
-.list-items-ranked .list-item {
-  grid-template-columns: 2.2em auto 1fr;
-}
-
 .list-rank {
   font-family: var(--serif);
-  font-size: 1.6rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--accent);
-  text-align: right;
 }
 
-.list-item-body {
-  min-width: 0;
+.list-table .list-rank {
+  width: 3em;
 }
 
-.list-item-body h3 {
-  font-size: 1.1rem;
+.list-table .item-controls {
+  margin-top: 0;
+  justify-content: flex-end;
+}
+
+.list-note-cell {
+  max-width: 24em;
+  white-space: pre-line;
   overflow-wrap: anywhere;
-}
-
-.list-item-body h3 a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.list-item-body h3 a:hover {
-  text-decoration: underline;
+  color: var(--ink-2);
 }
 
 .list-note {

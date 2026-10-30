@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Avatar, Empty, ErrorNote, Loading } from '../components/bits'
+import { BookCard, CardGrid } from '../components/Cards'
 import { Cover } from '../components/Cover'
 import { Icon } from '../components/Icon'
 import { ListsGrid, ListTags, NewListForm, PermissionNote } from '../components/Lists'
@@ -142,28 +143,44 @@ function ListHeader({
   )
 }
 
-function ItemRow({ item, rank, children }: { item: ListItem; rank?: number; children?: React.ReactNode }) {
+/** A book on a list, as a card (#100): ranked on an ordered list, with the list's note for it. */
+function ItemCard({ item, rank }: { item: ListItem; rank?: number }) {
   const v = item.value
   const hiveId = v.identifiers.hiveId
   const title = v.title ?? 'Untitled'
+  const context = (rank !== undefined || v.description) && (
+    <>
+      {rank !== undefined && <p className="list-rank">No. {rank}</p>}
+      {v.description && <p className="list-note">{v.description}</p>}
+    </>
+  )
+  if (!hiveId) {
+    return (
+      <article className="card book-card book-card-large">
+        <Cover hiveId="" title={title} authors={v.mainCredit ?? ''} isbn13={v.identifiers.isbn13} fallbackUrl={v.posterUrl} size="sm" />
+        <div className="card-body">
+          <h3 className="card-title">{title}</h3>
+          {v.mainCredit && <p className="card-sub">{displayAuthors(v.mainCredit)}</p>}
+          {context && <div className="card-context">{context}</div>}
+        </div>
+      </article>
+    )
+  }
   return (
-    <li className="list-item">
-      {rank !== undefined && <span className="list-rank">{rank}</span>}
-      <Cover
-        hiveId={hiveId ?? ''}
-        title={title}
-        authors={v.mainCredit ?? ''}
-        isbn13={v.identifiers.isbn13}
-        fallbackUrl={v.posterUrl}
-        size="sm"
-      />
-      <div className="list-item-body">
-        <h3>{hiveId ? <Link to={bookPath(hiveId)}>{title}</Link> : title}</h3>
-        {v.mainCredit && <p className="muted small">{displayAuthors(v.mainCredit)}</p>}
-        {v.description && <p className="list-note">{v.description}</p>}
-        {children}
-      </div>
-    </li>
+    <BookCard
+      book={{ hiveId, title, authors: v.mainCredit ?? '', identifiers: { isbn13: v.identifiers.isbn13, isbn10: v.identifiers.isbn10 }, coverUrl: v.posterUrl }}
+      context={context || undefined}
+    />
+  )
+}
+
+function ItemCards({ list }: { list: BookList }) {
+  return (
+    <CardGrid size="list" className="list-items" label={list.value.name}>
+      {list.items.map((item, i) => (
+        <ItemCard key={item.uri} item={item} rank={list.value.ordered ? i + 1 : undefined} />
+      ))}
+    </CardGrid>
   )
 }
 
@@ -174,11 +191,7 @@ function ListView({ list, owner, isPopfeed }: { list: BookList; owner: { handle:
       {list.items.length === 0 ? (
         <Empty title="Nothing on this list yet" />
       ) : (
-        <ol className={`list-items${list.value.ordered ? ' list-items-ranked' : ''}`}>
-          {list.items.map((item, i) => (
-            <ItemRow key={item.uri} item={item} rank={list.value.ordered ? i + 1 : undefined} />
-          ))}
-        </ol>
+        <ItemCards list={list} />
       )}
       {isPopfeed && <p className="muted small section">PopFeed keeps this shelf in step with your PopFeed reading; edit it there.</p>}
     </>
@@ -196,6 +209,7 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
   const storedTags = listTags(list.value).join(', ')
   const [tags, setTags] = useState(storedTags)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [arranging, setArranging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -220,6 +234,11 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
         {allowed && !editing && (
           <button className="btn btn-sm" onClick={() => setEditing(true)}>
             Edit
+          </button>
+        )}
+        {allowed && list.items.length > 0 && (
+          <button className="btn btn-sm" aria-pressed={arranging} onClick={() => setArranging((a) => !a)}>
+            {arranging ? 'Done' : 'Edit books'}
           </button>
         )}
       </ListHeader>
@@ -295,24 +314,41 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
           <p>Add books from your library below, or from any book's page.</p>
         </Empty>
       ) : (
-        <ol className={`list-items${list.value.ordered ? ' list-items-ranked' : ''}`}>
-          {list.items.map((item, i) => (
-            <ItemRow key={item.uri} item={item} rank={list.value.ordered ? i + 1 : undefined}>
-              {allowed && (
-                <ItemControls
-                  list={list}
-                  item={item}
-                  index={i}
-                  disabled={pending}
-                  onMove={move}
-                  onError={setError}
-                />
-              )}
-            </ItemRow>
-          ))}
-        </ol>
+        arranging ? (
+          <div className="table-wrap">
+            <table className="book-table list-table">
+              <caption className="visually-hidden">The books on {list.value.name}: reorder them, add notes or remove them</caption>
+              <thead>
+                <tr>
+                  {list.value.ordered && <th scope="col">No.</th>}
+                  <th scope="col">Title</th>
+                  <th scope="col">Author</th>
+                  <th scope="col">Note</th>
+                  <th scope="col">
+                    <span className="visually-hidden">Changes</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.map((item, i) => (
+                  <tr key={item.uri} className="list-item">
+                    {list.value.ordered && <td className="list-rank">{i + 1}</td>}
+                    <th scope="row">{item.value.identifiers.hiveId ? <Link to={bookPath(item.value.identifiers.hiveId)}>{item.value.title ?? 'Untitled'}</Link> : (item.value.title ?? 'Untitled')}</th>
+                    <td>{item.value.mainCredit ? displayAuthors(item.value.mainCredit) : ''}</td>
+                    <td className="list-note-cell">{item.value.description}</td>
+                    <td>
+                      {allowed && <ItemControls list={list} item={item} index={i} disabled={pending} onMove={move} onError={setError} />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <ItemCards list={list} />
+        )
       )}
-      {allowed && <AddFromLibrary list={list} />}
+      {allowed && (arranging || list.items.length === 0) && <AddFromLibrary list={list} />}
     </>
   )
 }
