@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSession } from './auth'
+import { useMemo } from 'react'
+import { useMaybeSession, useSession } from './auth'
 import {
   addToList,
   createList,
   deleteList,
+  itemIsBook,
   loadLists,
+  NOT_INTERESTED_LIST,
+  notInterestedIds,
+  notInterestedList,
   removeFromList,
   reorderList,
   updateItemNote,
@@ -74,4 +79,54 @@ export function useListWrites() {
       onError,
     }),
   }
+}
+
+// One Not Interested list per reader, even when two cards ask for it at once.
+const creating = new Map<string, Promise<BookList>>()
+
+/**
+ * Your Not Interested list (#106): which books are on it, and marking or
+ * unmarking one. It's made the first time you use it. Writes read the
+ * latest copy of your lists, so an Undo straight after a change still finds
+ * what that change added.
+ */
+export function useNotInterested() {
+  const { did } = useSession()
+  const queryClient = useQueryClient()
+  const lists = useLists(did)
+  const writes = useListWrites()
+  const list = notInterestedList(lists.data ?? [])
+  const latest = async () =>
+    notInterestedList(await queryClient.ensureQueryData({ queryKey: ['lists', did], queryFn: ({ signal }) => loadLists(did, signal) }))
+
+  return {
+    list,
+    has: (book: { hiveId: string; identifiers?: ListBook['identifiers'] }) => !!list?.items.some((i) => itemIsBook(i, book)),
+    mark: async (book: ListBook) => {
+      let target = await latest()
+      if (target?.items.some((i) => itemIsBook(i, book))) return
+      if (!target) {
+        const pending = creating.get(did) ?? writes.create.mutateAsync(NOT_INTERESTED_LIST)
+        creating.set(did, pending)
+        try {
+          target = await pending
+        } finally {
+          creating.delete(did)
+        }
+      }
+      await writes.add.mutateAsync({ list: target, book })
+    },
+    unmark: async (book: ListBook) => {
+      const target = await latest()
+      const item = target?.items.find((i) => itemIsBook(i, book))
+      if (target && item) await writes.removeItem.mutateAsync({ list: target, item })
+    },
+  }
+}
+
+/** The hiveIds you've marked Not Interested; none when signed out. */
+export function useNotInterestedIds(): string[] {
+  const me = useMaybeSession()
+  const lists = useLists(me?.did)
+  return useMemo(() => notInterestedIds(notInterestedList(lists.data ?? [])), [lists.data])
 }

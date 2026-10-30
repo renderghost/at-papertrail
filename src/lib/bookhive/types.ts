@@ -19,12 +19,16 @@ export const STATUS = {
 
 export type BookStatus = (typeof STATUS)[keyof typeof STATUS]
 
+/** BookHive's own words for each status (#106). */
 export const STATUS_LABEL: Record<BookStatus, string> = {
   [STATUS.reading]: 'Reading',
-  [STATUS.wantToRead]: 'Want to read',
-  [STATUS.finished]: 'Finished',
+  [STATUS.wantToRead]: 'Want to Read',
+  [STATUS.finished]: 'Read',
   [STATUS.abandoned]: 'Abandoned',
 }
+
+/** Papertrail's state for a book you've passed on, which BookHive doesn't have. */
+export const NOT_INTERESTED = 'Not Interested'
 
 export function isBookStatus(value: unknown): value is BookStatus {
   return typeof value === 'string' && value in STATUS_LABEL

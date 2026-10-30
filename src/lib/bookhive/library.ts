@@ -84,6 +84,17 @@ export async function updateBook(session: SessionFetch, entry: BookEntry, next: 
   }
 }
 
+/** Puts a deleted record back under its old key, so links and list items to it still work. */
+export async function restoreBook(session: SessionFetch, entry: BookEntry): Promise<BookEntry> {
+  const res = await procedure<WriteResult>(session, 'com.atproto.repo.createRecord', {
+    repo: entry.did,
+    collection: BOOK_COLLECTION,
+    rkey: entry.rkey,
+    record: entry.value,
+  })
+  return { ...entry, uri: res.uri, cid: res.cid }
+}
+
 export async function deleteBook(session: SessionFetch, entry: BookEntry): Promise<void> {
   try {
     await procedure(session, 'com.atproto.repo.deleteRecord', {

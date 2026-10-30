@@ -19,7 +19,6 @@ import {
   lovedInNetwork,
   popularWithTwins,
   recommendFor,
-  saveNotForMe,
   seedsFrom,
   telling,
   type NetworkPick,
@@ -29,9 +28,17 @@ import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
 import { OCCASIONS, pagesPerDay, pickFor, surprise, type Candidate } from '../lib/nextRead'
 import { PATHS } from '../lib/paths'
+import { useNotInterestedIds } from '../lib/useLists'
 import { copiesOf, networkIndex, networkTake, tasteTwins } from '../lib/taste'
 
 const HOUR = 60 * 60 * 1000
+
+/** Books you've passed on (#106): your Not Interested list, plus any "Not for me" from before it, kept in this browser. */
+function usePassedOn(did: string): string[] {
+  const listed = useNotInterestedIds()
+  const [earlier] = useState(() => loadNotForMe(did))
+  return useMemo(() => [...earlier, ...listed], [earlier, listed])
+}
 
 function useCatalogs(entries: BookEntry[]) {
   return useQueries({
@@ -160,7 +167,7 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
             <input type="checkbox" checked={ownedFirst} onChange={(e) => setOwnedFirst(e.target.checked)} /> Books I own first
           </label>
           {surprised ? (
-            <CardGrid size="large" className="picks" label="Your surprise">
+            <CardGrid size="grid" className="picks" label="Your surprise">
               <PickCard candidate={surprised} why={['picked at random, likelier the better it is rated']} />
             </CardGrid>
           ) : occasion ? (
@@ -170,7 +177,7 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
               <>
                 <p className="small muted occasion-blurb">{occasion.blurb}.</p>
                 {result!.note && <p className="small">{result!.note}</p>}
-                <CardGrid size="large" className="picks" label={`For a ${occasion.label.toLowerCase()}`}>
+                <CardGrid size="grid" className="picks" label={`For a ${occasion.label.toLowerCase()}`}>
                   {result!.picks.map((p) => (
                     <PickCard key={p.candidate.entry.uri} candidate={p.candidate} why={p.why} />
                   ))}
@@ -200,7 +207,7 @@ function PickCard({ candidate: { entry, catalog }, why }: { candidate: Candidate
 function BecauseYouLoved({ library }: { library: BookEntry[] }) {
   const { did } = useSession()
   const network = useNetwork(did)
-  const [notForMe, setNotForMe] = useState(() => loadNotForMe(did))
+  const passed = usePassedOn(did)
   // What you had when the page opened: a book you add here stays, showing your status.
   const [known] = useState(library)
   const reader = readerLanguage()
@@ -226,7 +233,7 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
   })
   const twins = useMemo(() => tasteTwins(library, network.readers, did), [library, network.readers, did])
   const groups = useMemo(() => {
-    const skip = excluded(known, notForMe)
+    const skip = excluded(known, passed)
     return seeds.map((seed, i) => {
       const genre = genres[i]
       const recs = recommendFor(seed, { byAuthor: authors[i]?.data?.books, ...(genre && genreBooks[i]?.data ? { genre: { name: genre, books: genreBooks[i]!.data! } } : {}) }, twins, skip, { reader })
@@ -234,13 +241,7 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
       for (const r of recs) skip.add(`hive:${r.hiveId}`)
       return { seed, recs, loading: !!authors[i]?.isPending || !!catalogs[i]?.isPending }
     })
-  }, [seeds, authors, catalogs, genreBooks, genres, twins, known, notForMe, reader])
-
-  const dismiss = (hiveId: string) => {
-    const next = [...notForMe, hiveId]
-    setNotForMe(next)
-    saveNotForMe(did, next)
-  }
+  }, [seeds, authors, catalogs, genreBooks, genres, twins, known, passed, reader])
 
   return (
     <>
@@ -257,9 +258,9 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
             {recs.length === 0 ? (
               <p className="small muted">{loading ? 'Looking…' : 'Nothing new to suggest yet.'}</p>
             ) : (
-              <CardGrid size="compact" className="picks" label={`Because you loved ${seed.value.title}`}>
+              <CardGrid size="grid" className="picks" label={`Because you loved ${seed.value.title}`}>
                 {recs.map((r) => (
-                  <RecommendationCard key={r.hiveId} rec={r} onDismiss={() => dismiss(r.hiveId)} />
+                  <RecommendationCard key={r.hiveId} rec={r} />
                 ))}
               </CardGrid>
             )}
@@ -270,13 +271,11 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
   )
 }
 
-function RecommendationCard({ rec, onDismiss }: { rec: Recommendation; onDismiss: () => void }) {
+function RecommendationCard({ rec }: { rec: Recommendation }) {
   return (
     <BookCard
-      size="compact"
       book={{ hiveId: rec.hiveId, title: rec.title, authors: rec.authors, identifiers: rec.identifiers, catalog: rec.catalog }}
       context={<p className="why">{rec.why}</p>}
-      more={[{ label: 'Not for me', onSelect: onDismiss }]}
     />
   )
 }
@@ -286,26 +285,20 @@ const YEAR = 365 * 24 * HOUR
 function Recommendations({ library }: { library: BookEntry[] }) {
   const { did } = useSession()
   const network = useNetwork(did)
-  const [notForMe, setNotForMe] = useState(() => loadNotForMe(did))
+  const passed = usePassedOn(did)
   // What you had when the page opened: a book you add here stays, showing your status.
   const [known] = useState(library)
   const twins = useMemo(() => tasteTwins(known, network.readers, did), [known, network.readers, did])
   const alike = twins.filter((t) => (t.match.score ?? 0) >= 60).length
   const { popular, loved } = useMemo(() => {
-    const skip = excluded(known, notForMe)
+    const skip = excluded(known, passed)
     const popular = popularWithTwins(twins, skip)
     // Each book once: the readers like you come first.
     for (const p of popular) for (const k of sameBookKeys(p.book)) skip.add(k)
     const since = new Date(Date.now() - YEAR).toISOString()
     return { popular, loved: lovedInNetwork(network.readers, skip, { myDid: did, since }) }
-  }, [twins, known, notForMe, network.readers, did])
+  }, [twins, known, passed, network.readers, did])
   const scanning = network.status === 'loading'
-
-  const dismiss = (hiveId: string) => {
-    const next = [...notForMe, hiveId]
-    setNotForMe(next)
-    saveNotForMe(did, next)
-  }
 
   return (
     <>
@@ -316,7 +309,7 @@ function Recommendations({ library }: { library: BookEntry[] }) {
           {alike > 0 && <span className="count">from {alike === 1 ? '1 reader' : `${alike} readers`} like you</span>}
         </div>
         {popular.length ? (
-          <PickGrid picks={popular} label="Popular with readers like you" onDismiss={dismiss} />
+          <PickGrid picks={popular} label="Popular with readers like you" />
         ) : scanning ? (
           <p className="small muted">Still looking through your network…</p>
         ) : alike === 0 ? (
@@ -334,7 +327,7 @@ function Recommendations({ library }: { library: BookEntry[] }) {
           <span className="count">the past year</span>
         </div>
         {loved.length ? (
-          <PickGrid picks={loved} label="Loved by people you follow" onDismiss={dismiss} />
+          <PickGrid picks={loved} label="Loved by people you follow" />
         ) : (
           <p className="small muted">{scanning ? 'Still looking through your network…' : "Nothing you don't already have, from the past year."}</p>
         )}
@@ -343,23 +336,21 @@ function Recommendations({ library }: { library: BookEntry[] }) {
   )
 }
 
-function PickGrid({ picks, label, onDismiss }: { picks: NetworkPick[]; label: string; onDismiss: (hiveId: string) => void }) {
+function PickGrid({ picks, label }: { picks: NetworkPick[]; label: string }) {
   return (
-    <CardGrid size="compact" className="picks network-picks" label={label}>
+    <CardGrid size="grid" className="picks network-picks" label={label}>
       {picks.map((p) => {
         const v = p.book.value
         const stars = p.readers.reduce((sum, r) => sum + r.stars, 0) / p.readers.length
         return (
           <BookCard
             key={p.book.uri}
-            size="compact"
             book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry: p.book }}
             context={
               <p className="why">
                 {lovedBy(p)} <Stars stars={Math.round(stars)} size={12} />
               </p>
             }
-            more={[{ label: 'Not for me', onSelect: () => onDismiss(v.hiveId) }]}
           />
         )
       })}

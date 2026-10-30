@@ -212,7 +212,7 @@ function YouAndAuthor({ mine }: { mine: BookEntry[] }) {
 
 function BookGrid({ books, byHive, label }: { books: HiveBook[]; byHive: Map<string, BookEntry>; label: string }) {
   return (
-    <CardGrid size="compact" className="author-books" label={label}>
+    <CardGrid size="grid" className="author-books" label={label}>
       {books.map((b) => {
         const mine = byHive.get(b.id)
         const series = parseSeries(b.series)
@@ -220,7 +220,6 @@ function BookGrid({ books, byHive, label }: { books: HiveBook[]; byHive: Map<str
         return (
           <BookCard
             key={b.id}
-            size="compact"
             book={{ hiveId: b.id, title: b.title, authors: b.authors, identifiers: b.identifiers, catalog: b, entry: mine }}
             state={mine ? { entry: mine } : undefined}
             context={facts.length ? <p>{facts.join(' · ')}</p> : undefined}

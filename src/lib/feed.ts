@@ -29,7 +29,7 @@ export const FEED_FILTERS: { kind: FeedEventKind | 'all'; label: string }[] = [
   { kind: 'started', label: 'Started' },
   { kind: 'finished', label: 'Finished' },
   { kind: 'reviewed', label: 'Reviewed & rated' },
-  { kind: 'wantToRead', label: 'Want to read' },
+  { kind: 'wantToRead', label: 'Want to Read' },
 ]
 
 const DAY = 86_400_000

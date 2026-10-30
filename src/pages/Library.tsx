@@ -88,7 +88,7 @@ export function Overview() {
             <h2>Currently reading</h2>
             <span className="count">{reading.length}</span>
           </div>
-          <CardGrid size="large" className="reading-list" label="Currently reading">
+          <CardGrid size="grid" className="reading-list" label="Currently reading">
             {reading.map((e) => (
               <ReadingCard key={e.uri} entry={e} />
             ))}

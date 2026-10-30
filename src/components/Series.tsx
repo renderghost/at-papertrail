@@ -10,7 +10,7 @@ import { findInSeries, hasRead, seriesOf, seriesOrder, seriesProgress, type Seri
 import { useAuthorSeries } from '../lib/usePeople'
 import { Empty, Loading } from './bits'
 import { BookCard, CardGrid } from './Cards'
-import { QuickAdd } from './QuickAdd'
+import { StatusControl } from './StatusControl'
 
 const HOUR = 60 * 60 * 1000
 
@@ -65,10 +65,10 @@ export function SeriesSection({ book, mine }: { book: CatalogBook | null; mine: 
             <strong>Next in {series.title}:</strong> <Link to={bookPath(after.book.id)}>{after.book.title}</Link>
             {after.position ? ` (book ${after.position})` : ''}
           </p>
-          <QuickAdd book={quickBook(after.book)} />
+          <StatusControl book={quickBook(after.book)} />
         </div>
       )}
-      <CardGrid size="compact" className="series-strip" label={`${series.title}, in order`}>
+      <CardGrid size="grid" className="series-strip" label={`${series.title}, in order`}>
         {shown.map((b) => (
           <SeriesItem key={b.book.id} item={b} current={b.book.id === book!.id} next={b === after} />
         ))}
@@ -80,7 +80,6 @@ export function SeriesSection({ book, mine }: { book: CatalogBook | null; mine: 
 function SeriesItem({ item, current, next }: { item: SeriesBook; current: boolean; next: boolean }) {
   return (
     <BookCard
-      size="compact"
       book={{ ...quickBook(item.book), entry: item.entry }}
       context={
         <p>
@@ -89,7 +88,7 @@ function SeriesItem({ item, current, next }: { item: SeriesBook; current: boolea
           {next ? ' · next' : ''}
         </p>
       }
-      action={current ? null : undefined}
+      status={!current}
     />
   )
 }
@@ -165,7 +164,7 @@ export function ContinueSeries({ entries }: { entries: BookEntry[] }) {
   }
   return (
     <>
-      <CardGrid size="large" className="continue-series" label="Continue a series">
+      <CardGrid size="grid" className="continue-series" label="Continue a series">
         {items.map(({ series: s, next }) => (
           <BookCard
             key={`${s.author}|${s.title}`}

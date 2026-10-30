@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Stars, StatusPill } from '../components/bits'
+import { Stars } from '../components/bits'
 import { Cover } from '../components/Cover'
-import { QuickAdd } from '../components/QuickAdd'
+import { StatusControl } from '../components/StatusControl'
 import { useSession } from '../lib/auth'
 import { displayAuthors } from '../lib/bookhive/authors'
 import { applyPatch } from '../lib/bookhive/library'
@@ -298,28 +298,22 @@ function ScanResult({ mode, found, onNext }: { mode: Mode; found: { isbn: string
           {mine ? (
             <div className="row">
               <span>In your library:</span>
-              <StatusPill status={mine.value.status} />
               {mine.value.stars ? <Stars stars={mine.value.stars} size={14} /> : null}
               {mine.value.owned && <span className="small muted">owned</span>}
               <Link className="btn btn-sm" to={bookPath(mine.value.hiveId)} state={{ entry: mine }}>
                 Open
               </Link>
             </div>
+          ) : mode === 'shop' ? (
+            <p className="muted">Not in your library.</p>
           ) : (
-            <>
-              {mode === 'shop' && <p className="muted">Not in your library.</p>}
-              {mode === 'add' && (
-                <label className="checkbox">
-                  <input type="checkbox" checked={owned} onChange={(e) => setOwned(e.target.checked)} /> I own a copy
-                </label>
-              )}
-              <QuickAdd
-                book={book}
-                statuses={mode === 'shop' ? [STATUS.wantToRead] : [STATUS.wantToRead, STATUS.reading, STATUS.finished]}
-                owned={mode === 'add' && owned}
-              />
-            </>
+            mode === 'add' && (
+              <label className="checkbox">
+                <input type="checkbox" checked={owned} onChange={(e) => setOwned(e.target.checked)} /> I own a copy
+              </label>
+            )
           )}
+          <StatusControl book={book} owned={!mine && mode === 'add' && owned} />
           {mode === 'shop' && (
             <NetworkReaders
               did={did}

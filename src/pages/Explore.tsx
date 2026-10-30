@@ -8,6 +8,7 @@ import { getExplore, getGenreBooks, getLanguages, listGenres, type HiveBook } fr
 import { plural } from '../lib/format'
 import { useDocumentTitle } from '../lib/hooks'
 import { authorPath, genrePath, PATHS } from '../lib/paths'
+import { useNotInterestedIds } from '../lib/useLists'
 
 const HOUR = 60 * 60 * 1000
 
@@ -93,11 +94,11 @@ export function ExplorePage() {
           <div className="section-title">
             <h2>Most-read authors</h2>
           </div>
-          <CardGrid size="compact" className="top-authors" label="Most-read authors">
-            {explore.data.topAuthors.map((a) => (
+          <CardGrid size="grid" className="top-authors" label="Most-read authors">
+            {/* Three full rows of three. */}
+            {explore.data.topAuthors.slice(0, 9).map((a) => (
               <PersonCard
                 key={a.author}
-                size="compact"
                 person={{ name: a.author, ...(a.thumbnail?.startsWith('https://') ? { avatar: a.thumbnail } : {}) }}
                 to={authorPath(a.author)}
                 context={
@@ -125,7 +126,9 @@ export function GenrePage() {
     queryFn: ({ signal }) => getGenreBooks(genre, { language: language || undefined, limit: 100, signal }),
     staleTime: 6 * HOUR,
   })
-  const works = useMemo(() => distinctWorks(books.data ?? []), [books.data])
+  // Books you've marked Not Interested (#106) stay out.
+  const passed = useNotInterestedIds()
+  const works = useMemo(() => distinctWorks(books.data ?? []).filter((b) => !passed.includes(b.id)), [books.data, passed])
 
   return (
     <>
@@ -156,11 +159,10 @@ export function GenrePage() {
 
 export function HiveGrid({ books, label }: { books: HiveBook[]; label?: string }) {
   return (
-    <CardGrid size="compact" className="genre-books" label={label}>
+    <CardGrid size="grid" className="genre-books" label={label}>
       {books.map((b) => (
         <BookCard
           key={b.id}
-          size="compact"
           book={{ hiveId: b.id, title: b.title, authors: b.authors, identifiers: b.identifiers, catalog: b }}
           context={b.rating ? <p>{(b.rating / 1000).toFixed(2)} average</p> : undefined}
         />

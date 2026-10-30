@@ -1,26 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ErrorNote, Loading } from '../components/bits'
-import { Cover } from '../components/Cover'
+import { BookCard, CardGrid } from '../components/Cards'
 import { Icon } from '../components/Icon'
 import { searchHive, type HiveBook } from '../lib/bookhive/api'
-import { displayAuthors, firstAuthor } from '../lib/bookhive/authors'
-import { STATUS, STATUS_LABEL, type BookEntry, type BookStatus } from '../lib/bookhive/types'
-import { useBookWrites, useDebounced, useDocumentTitle, useMyLibrary } from '../lib/hooks'
-import { bookPath, PATHS } from '../lib/paths'
-import {
-  bookKey,
-  fullTitle,
-  identityFromCandidate,
-  matchCatalog,
-  newBookRecord,
-  searchBooks,
-  withoutCatalogued,
-  type Candidate,
-} from '../lib/search'
-
-const QUICK_STATUSES: BookStatus[] = [STATUS.wantToRead, STATUS.reading, STATUS.finished]
+import { useDebounced, useDocumentTitle, useMyCopy } from '../lib/hooks'
+import { PATHS } from '../lib/paths'
+import { identityFromCandidate, matchCatalog, searchBooks, withoutCatalogued, type Candidate } from '../lib/search'
 
 /** Discover › Search (#104): the one book search, which is also how you add a book. */
 export function AddBook() {
@@ -91,11 +78,11 @@ export function AddBook() {
           <div className="section-title">
             <h2>On BookHive</h2>
           </div>
-          <ul className="results">
+          <CardGrid size="list" className="search-results" label="On BookHive">
             {hiveBooks.map((book) => (
               <HiveResult key={book.id} book={book} />
             ))}
-          </ul>
+          </CardGrid>
         </section>
       )}
       {searching && <Loading>Searching…</Loading>}
@@ -107,11 +94,11 @@ export function AddBook() {
               <h2>More from Open Library and Google Books</h2>
             </div>
           )}
-          <ul className="results">
+          <CardGrid size="list" className="search-results" label="More books">
             {others.map((c) => (
               <SearchResult key={c.key} candidate={c} />
             ))}
-          </ul>
+          </CardGrid>
         </section>
       )}
       {!searching && results.data && hiveBooks.length === 0 && others?.length === 0 && (
@@ -123,156 +110,68 @@ export function AddBook() {
   )
 }
 
-function useExistingEntry(hiveId: string | undefined, isbn13: string | undefined, key: string): BookEntry | undefined {
-  const library = useMyLibrary()
-  return library.data?.find(
-    (e) =>
-      (hiveId && e.value.hiveId === hiveId) ||
-      (isbn13 && e.value.identifiers?.isbn13 === isbn13) ||
-      bookKey(e.value.title, firstAuthor(e.value.authors)) === key,
-  )
-}
-
-/** Add buttons, or a link to your copy when the book is already in your library. */
-function AddActions({
-  existing,
-  ready,
-  pending,
-  onAdd,
-}: {
-  existing: BookEntry | undefined
-  ready: boolean
-  pending: BookStatus | null
-  onAdd: (status: BookStatus) => void
-}) {
+/** "1998 · 546 pages · 4.12 average", and whether BookHive has it. */
+function Facts({ year, pages, rating, catalogued }: { year?: number; pages?: number; rating?: number; catalogued: boolean | null }) {
+  const facts = [year, pages ? `${pages} pages` : null, rating ? `${(rating / 1000).toFixed(2)} average` : null].filter(Boolean)
   return (
-    <div className="actions">
-      {existing ? (
-        <Link className="btn btn-sm" to={bookPath(existing.value.hiveId)} state={{ entry: existing }}>
-          In your library · {existing.value.status ? STATUS_LABEL[existing.value.status as BookStatus] : 'Open'}
-        </Link>
+    <p className="search-facts">
+      {facts.join(' · ')}
+      {facts.length > 0 && ' · '}
+      {catalogued === null ? (
+        <span className="muted">Checking BookHive…</span>
+      ) : catalogued ? (
+        <span className="on-bookhive">
+          <Icon name="check" size={14} /> On BookHive
+        </span>
       ) : (
-        QUICK_STATUSES.map((s) => (
-          <button
-            key={s}
-            className={`btn btn-sm${s === STATUS.reading ? ' btn-primary' : ''}`}
-            disabled={!ready || pending !== null}
-            onClick={() => onAdd(s)}
-          >
-            {pending === s ? 'Adding…' : STATUS_LABEL[s]}
-          </button>
-        ))
+        <span className="muted" title="Saved to your PDS, but bookhive.buzz only lists books in its catalogue.">
+          Not on bookhive.buzz yet
+        </span>
       )}
-    </div>
+    </p>
   )
 }
 
-/** A result from BookHive's own search: already catalogued, so it's added by its hiveId. */
+/** A result from BookHive's own search: already catalogued, so it's added by its hiveId (#106: a list card). */
 function HiveResult({ book }: { book: HiveBook }) {
-  const navigate = useNavigate()
-  const { create } = useBookWrites()
-  const existing = useExistingEntry(book.id, book.identifiers?.isbn13, bookKey(book.title, firstAuthor(book.authors)))
-  const [pending, setPending] = useState<BookStatus | null>(null)
-
-  const add = async (status: BookStatus) => {
-    setPending(status)
-    try {
-      const identity = { hiveId: book.id, title: book.title, authors: book.authors, identifiers: book.identifiers }
-      const entry = await create.mutateAsync(newBookRecord(identity, book, status))
-      navigate(bookPath(entry.value.hiveId), { state: { entry, justAdded: true } })
-    } catch {
-      setPending(null)
-    }
-  }
-
   return (
-    <li className="result">
-      <Cover hiveId={book.id} title={book.title} authors={book.authors} fallbackUrl={book.cover ?? book.thumbnail} size="sm" />
-      <div>
-        <h3>
-          <Link to={bookPath(book.id)}>{book.title}</Link>
-        </h3>
-        <div className="muted small">
-          {displayAuthors(book.authors)}
-          {book.publicationYear ? ` · ${book.publicationYear}` : ''}
-          {book.numPages ? ` · ${book.numPages} pages` : ''}
-          {book.rating ? ` · ${(book.rating / 1000).toFixed(2)} average` : ''}
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <span className="badge badge-hive">
-            <Icon name="check" size={14} /> On BookHive
-          </span>
-        </div>
-        <AddActions existing={existing} ready pending={pending} onAdd={(s) => void add(s)} />
-        {create.isError && pending === null && <ErrorNote error={create.error} />}
-      </div>
-    </li>
+    <BookCard
+      book={{ hiveId: book.id, title: book.title, authors: book.authors, identifiers: book.identifiers, catalog: book, coverUrl: book.cover ?? book.thumbnail }}
+      context={<Facts year={book.publicationYear} pages={book.numPages} rating={book.rating} catalogued />}
+    />
   )
 }
 
+/** A result from Open Library or Google Books, matched to BookHive's catalogue where it can be. */
 function SearchResult({ candidate }: { candidate: Candidate }) {
-  const navigate = useNavigate()
-  const { create } = useBookWrites()
   const match = useQuery({
     queryKey: ['catalog-match', candidate.key],
     queryFn: () => matchCatalog(candidate),
     staleTime: Infinity,
   })
-  const existing = useExistingEntry(match.data?.hiveId, candidate.isbn13, bookKey(fullTitle(candidate), candidate.authors[0]))
-  const [pending, setPending] = useState<BookStatus | null>(null)
   const catalog = match.data?.catalog ?? null
-
-  const add = async (status: BookStatus) => {
-    if (!match.data) return
-    setPending(status)
-    try {
-      const record = newBookRecord(identityFromCandidate(candidate, match.data.hiveId), catalog, status)
-      const entry = await create.mutateAsync(record)
-      navigate(bookPath(entry.value.hiveId), { state: { entry, justAdded: true } })
-    } catch {
-      setPending(null)
-    }
-  }
-
-  const hiveId = match.data?.hiveId
-  return (
-    <li className="result">
-      {hiveId ? (
-        <Cover
-          hiveId={hiveId}
-          title={catalog?.title ?? candidate.title}
-          authors={catalog?.authors ?? candidate.authors.join('\t')}
-          isbn13={candidate.isbn13}
-          fallbackUrl={candidate.coverUrl}
-          size="sm"
-        />
-      ) : (
+  const identity = match.data ? identityFromCandidate(candidate, match.data.hiveId) : null
+  const mine = useMyCopy(identity)
+  const facts = <Facts year={candidate.year} pages={catalog?.numPages ?? candidate.pages} catalogued={match.isPending ? null : !!catalog} />
+  if (!identity) {
+    // Until the match is back there's nothing to add it by: the card waits.
+    return (
+      <article className="card book-card book-card-large" aria-busy="true">
         <div className="cover cover-sm" />
-      )}
-      <div>
-        <h3>{catalog?.title ?? candidate.title}</h3>
-        {!catalog && candidate.subtitle && <div className="muted small">{candidate.subtitle}</div>}
-        <div className="muted small">
-          {candidate.authors.join(', ')}
-          {candidate.year ? ` · ${candidate.year}` : ''}
-          {(catalog?.numPages ?? candidate.pages) ? ` · ${catalog?.numPages ?? candidate.pages} pages` : ''}
+        <div className="card-body">
+          <h3 className="card-title">{candidate.title}</h3>
+          <p className="card-sub">{candidate.authors.join(', ')}</p>
+          <div className="card-context">{facts}</div>
         </div>
-        <div style={{ marginTop: 6 }}>
-          {match.isPending ? (
-            <span className="badge">Checking BookHive…</span>
-          ) : catalog ? (
-            <span className="badge badge-hive">
-              <Icon name="check" size={14} /> On BookHive
-            </span>
-          ) : (
-            <span className="badge" title="Saved to your PDS, but bookhive.buzz only lists books in its catalogue.">
-              Not on bookhive.buzz yet
-            </span>
-          )}
-        </div>
-        <AddActions existing={existing} ready={!!match.data} pending={pending} onAdd={(s) => void add(s)} />
-        {create.isError && pending === null && <ErrorNote error={create.error} />}
-      </div>
-    </li>
+      </article>
+    )
+  }
+  return (
+    <BookCard
+      book={{ ...identity, title: catalog?.title ?? identity.title, authors: catalog?.authors ?? identity.authors, catalog, coverUrl: candidate.coverUrl }}
+      // A book BookHive doesn't know has no page to open until it's yours.
+      to={catalog || mine ? undefined : null}
+      context={facts}
+    />
   )
 }

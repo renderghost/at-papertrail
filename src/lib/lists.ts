@@ -218,6 +218,22 @@ export function newListItem(listUri: string, book: ListBook, note?: string, now 
   }
 }
 
+/**
+ * Not Interested (#106): BookHive has no such status, so it's kept as an
+ * ordinary list on your PDS, found by its name. It follows you between
+ * devices and needs no new permission; like any list, others can see it.
+ */
+export const NOT_INTERESTED_LIST = { name: 'Not Interested', description: "Books I've passed on. Papertrail keeps them out of my recommendations." }
+
+export function notInterestedList(lists: BookList[]): BookList | undefined {
+  return lists.find((l) => !isPopfeedShelf(l) && l.value.name.trim().toLowerCase() === NOT_INTERESTED_LIST.name.toLowerCase())
+}
+
+/** The hiveIds on it, for leaving those books out. */
+export function notInterestedIds(list: BookList | undefined): string[] {
+  return (list?.items ?? []).map((i) => i.value.identifiers.hiveId).filter((id): id is string => typeof id === 'string' && id.length > 0)
+}
+
 /** Whether an item is this book: by hiveId, else by ISBN. */
 export function itemIsBook(item: ListItem, book: { hiveId: string; identifiers?: BookIdentifiers }): boolean {
   const ids = item.value.identifiers

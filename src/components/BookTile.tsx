@@ -38,7 +38,7 @@ export function ReadingCard({ entry }: { entry: BookEntry }) {
     <BookCard
       book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry }}
       state={{ entry }}
-      action={null}
+      status={false}
       context={v.bookProgress ? <Progress progress={v.bookProgress} /> : <span className="muted">No progress logged yet</span>}
     />
   )

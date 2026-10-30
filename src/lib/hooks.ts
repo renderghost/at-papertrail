@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getProfile } from './atproto'
 import { useMaybeSession, useSession } from './auth'
 import { getHiveBook } from './bookhive/api'
 import { fetchCatalogBook } from './bookhive/catalog'
-import { createBook, deleteBook, loadLibrary, updateBook } from './bookhive/library'
+import { createBook, deleteBook, loadLibrary, restoreBook, updateBook } from './bookhive/library'
 import type { BookEntry, BookIdentifiers, BookRecord } from './bookhive/types'
 import { bookKeys, libraryIndex } from './import/match'
 
@@ -66,12 +66,22 @@ export function useMyLibrary() {
   return useLibrary(useMaybeSession()?.did)
 }
 
+// One index per copy of your library, shared by every card on the page that looks a book up in it.
+const indexes = new WeakMap<BookEntry[], Map<string, BookEntry>>()
+const NO_BOOKS: BookEntry[] = []
+
+function indexOf(entries: BookEntry[]): Map<string, BookEntry> {
+  let index = indexes.get(entries)
+  if (!index) indexes.set(entries, (index = libraryIndex(entries)))
+  return index
+}
+
 /** Your copy of a book, matched by hiveId, ISBN, Goodreads id, or title and first author. */
 export function useMyCopy(
   book: { hiveId: string; title: string; authors: string; identifiers?: BookIdentifiers } | null | undefined,
 ): BookEntry | undefined {
   const library = useMyLibrary()
-  const index = useMemo(() => libraryIndex(library.data ?? []), [library.data])
+  const index = indexOf(library.data ?? NO_BOOKS)
   if (!book) return undefined
   return bookKeys(book)
     .map((k) => index.get(k))
@@ -105,7 +115,14 @@ export function useBookWrites() {
     onError: () => queryClient.invalidateQueries({ queryKey: key }),
   })
 
-  return { create, update, remove }
+  /** Undo of a removal: the same record back under its old key. */
+  const restore = useMutation({
+    mutationFn: (entry: BookEntry) => restoreBook(session, entry),
+    onSuccess: (entry) => replace((entries) => [entry, ...entries.filter((e) => e.uri !== entry.uri)]),
+    onError: () => queryClient.invalidateQueries({ queryKey: key }),
+  })
+
+  return { create, update, remove, restore }
 }
 
 /** True once the element has been near the viewport; used to lazy-load covers. */

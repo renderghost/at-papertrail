@@ -78,7 +78,8 @@ export function recommendFor<R extends { profile: Profile; books: BookEntry[] }>
   { byAuthor = [], genre }: Sources,
   twins: Twin<R>[],
   skip: Set<string>,
-  { perSeed = 4, reader }: { perSeed?: number; reader?: string } = {},
+  // Three: one full row of cards.
+  { perSeed = 3, reader }: { perSeed?: number; reader?: string } = {},
 ): Recommendation[] {
   const picks: Recommendation[] = []
   const taken = new Set(skip)
@@ -130,21 +131,13 @@ export function recommendFor<R extends { profile: Profile; books: BookEntry[] }>
 
 const NOT_FOR_ME = 'papertrail-not-for-me:'
 
-/** Books you've waved away, kept in this browser only. */
+/** Books waved away as "Not for me" before Not Interested (#106) existed, kept in this browser only. */
 export function loadNotForMe(did: string): string[] {
   try {
     const raw = JSON.parse(localStorage.getItem(NOT_FOR_ME + did) ?? '[]') as unknown
     return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
   } catch {
     return []
-  }
-}
-
-export function saveNotForMe(did: string, hiveIds: string[]): void {
-  try {
-    localStorage.setItem(NOT_FOR_ME + did, JSON.stringify(hiveIds.slice(-500)))
-  } catch {
-    // Private mode: it just won't be remembered.
   }
 }
 
@@ -180,7 +173,8 @@ const average = (p: NetworkPick) => p.readers.reduce((sum, r) => sum + r.stars, 
 export function popularWithTwins<R extends ReaderLike & { profile: Profile }>(
   twins: Twin<R>[],
   skip: Set<string>,
-  { minMatch = 60, perReader = 3, limit = 20 }: { minMatch?: number; perReader?: number; limit?: number } = {},
+  // Up to six full rows of three.
+  { minMatch = 60, perReader = 3, limit = 18 }: { minMatch?: number; perReader?: number; limit?: number } = {},
 ): NetworkPick[] {
   const found: Parameters<typeof gather>[0] = []
   for (const { reader, match } of twins) {
@@ -208,7 +202,7 @@ export function popularWithTwins<R extends ReaderLike & { profile: Profile }>(
 export function lovedInNetwork<R extends { profile: Profile; books: BookEntry[] }>(
   readers: R[],
   skip: Set<string>,
-  { myDid, since, limit = 20 }: { myDid?: string; since: string; limit?: number },
+  { myDid, since, limit = 18 }: { myDid?: string; since: string; limit?: number },
 ): NetworkPick[] {
   const found: Parameters<typeof gather>[0] = []
   for (const reader of readers) {

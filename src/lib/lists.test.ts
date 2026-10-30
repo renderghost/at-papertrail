@@ -11,6 +11,8 @@ import {
   LIST_ITEM,
   listTags,
   newListItem,
+  notInterestedIds,
+  notInterestedList,
   orderItems,
   parseTags,
   removeFromList,
@@ -250,3 +252,26 @@ describe('repointWrites', () => {
     expect(repointWrites(ranked, new Set(['bk_absent']), to)).toEqual([])
   })
 })
+
+describe('Not Interested', () => {
+  const lists = buildLists(
+    DID,
+    [
+      { uri: listUri('l1'), cid: 'c1', value: { name: 'Weekend reads', createdAt: '2026-01-01T00:00:00Z' } },
+      { uri: listUri('l2'), cid: 'c2', value: { name: ' not interested ', createdAt: '2026-01-02T00:00:00Z' } },
+      { uri: listUri('l3'), cid: 'c3', value: { name: 'Not Interested', listType: 'not_interested', createdAt: '2026-01-03T00:00:00Z' } },
+    ],
+    [item('i1', listUri('l2')), item('i2', listUri('l2'), { identifiers: { isbn13: '9780000000002' } }), item('i3', listUri('l1'))],
+  )
+
+  it('is your own list of that name, whatever its case, never a PopFeed shelf', () => {
+    expect(notInterestedList(lists)?.rkey).toBe('l2')
+    expect(notInterestedList(lists.filter((l) => l.rkey !== 'l2'))).toBeUndefined()
+  })
+
+  it('leaves out the books on it by hiveId', () => {
+    expect(notInterestedIds(notInterestedList(lists))).toEqual(['bk_i1'])
+    expect(notInterestedIds(undefined)).toEqual([])
+  })
+})
+

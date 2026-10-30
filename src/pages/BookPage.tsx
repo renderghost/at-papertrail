@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { Avatar, Empty, ErrorNote, Loading, Stars, StatusPill } from '../components/bits'
 import { AuthorLinks } from '../components/AuthorLinks'
 import { BookEditor } from '../components/BookEditor'
@@ -12,6 +12,7 @@ import { AddToList } from '../components/Lists'
 import { RatingBars } from '../components/RatingBars'
 import { ReviewText } from '../components/ReviewText'
 import { SeriesSection } from '../components/Series'
+import { StatusControl } from '../components/StatusControl'
 import { useMaybeSession } from '../lib/auth'
 import { firstAuthor } from '../lib/bookhive/authors'
 import { sameBookKeys } from '../lib/bookclub'
@@ -21,11 +22,11 @@ import { describeSeries, parseSeries } from '../lib/bookhive/series'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookIdentifiers, type BookStatus, type CatalogBook } from '../lib/bookhive/types'
 import { FEATURES } from '../lib/features'
 import { displayName, formatDate, plural } from '../lib/format'
-import { useBookWrites, useCatalog, useDocumentTitle, useHiveBook, useMyLibrary } from '../lib/hooks'
+import { useCatalog, useDocumentTitle, useHiveBook, useMyLibrary } from '../lib/hooks'
 import { useNetwork, type Reader } from '../lib/network'
 import { bookPath, loginPath, PATHS, profilePath, seriesPath } from '../lib/paths'
 import { reviewMatches, type ReviewEntry } from '../lib/popfeed'
-import { lookupBookDetails, newBookRecord } from '../lib/search'
+import { lookupBookDetails } from '../lib/search'
 import { askUrl, describeTake, networkTake, stoppedAt, trustScores } from '../lib/taste'
 
 type LocationState = { entry?: BookEntry; justAdded?: boolean } | null
@@ -271,6 +272,7 @@ function ReadHistory({ entry }: { entry: BookEntry }) {
   )
 }
 
+/** Not yours yet: the same status control as every book card (#106), so adding it reads the same everywhere. */
 function AddFromPage({
   hiveId,
   title,
@@ -284,38 +286,12 @@ function AddFromPage({
   catalog: CatalogBook | null
   source: BookEntry | undefined
 }) {
-  const navigate = useNavigate()
-  const { create } = useBookWrites()
-  const [pending, setPending] = useState<BookStatus | null>(null)
-  const add = async (status: BookStatus) => {
-    setPending(status)
-    try {
-      const identifiers = source?.value.identifiers
-      const record = newBookRecord({ hiveId, title, authors, identifiers }, catalog, status)
-      const entry = await create.mutateAsync(record)
-      navigate(bookPath(hiveId), { replace: true, state: { entry, justAdded: true } })
-    } finally {
-      setPending(null)
-    }
-  }
   return (
     <div className="panel">
       <p className="muted" style={{ marginBottom: 12 }}>
         This book isn't in your library yet.
       </p>
-      <div className="row">
-        {[STATUS.wantToRead, STATUS.reading, STATUS.finished].map((s) => (
-          <button
-            key={s}
-            className={`btn${s === STATUS.reading ? ' btn-primary' : ''}`}
-            disabled={pending !== null}
-            onClick={() => void add(s)}
-          >
-            {pending === s ? 'Adding…' : STATUS_LABEL[s]}
-          </button>
-        ))}
-      </div>
-      {create.isError && <ErrorNote error={create.error} />}
+      <StatusControl book={{ hiveId, title, authors, identifiers: source?.value.identifiers, catalog }} />
     </div>
   )
 }

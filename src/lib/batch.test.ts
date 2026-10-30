@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeBatch, planBatch } from './batch'
+import { describeBatch, planBatch, withStatus } from './batch'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookRecord, type BookStatus } from './bookhive/types'
 import type { BookList } from './lists'
 
@@ -32,7 +32,7 @@ describe('planBatch', () => {
     // Reading keeps its start date.
     expect((plan.writes[1] as { value: BookRecord }).value.startedAt).toBe('2026-10-01T00:00:00.000Z')
     expect(plan.undo.map((w) => (w as { value: BookRecord }).value)).toEqual([books[0]!.value, books[2]!.value])
-    expect(describeBatch({ kind: 'status', status: STATUS.finished }, plan.changed, label)).toBe('Marked 2 books Finished')
+    expect(describeBatch({ kind: 'status', status: STATUS.finished }, plan.changed, label)).toBe('Moved 2 books to Read')
   })
 
   it('reading a finished book again keeps the earlier read', () => {
@@ -81,3 +81,17 @@ describe('planBatch', () => {
     expect(describeBatch({ kind: 'remove' }, 1, label)).toBe('Removed 1 book from your library')
   })
 })
+
+describe('withStatus', () => {
+  it('stamps the date a book enters a status, and keeps the others', () => {
+    const want = entry('a', { status: STATUS.wantToRead, stars: 8, owned: true }).value
+    const reading = withStatus(want, STATUS.reading, () => NOW)
+    expect(reading).toMatchObject({ status: STATUS.reading, startedAt: NOW, stars: 8, owned: true })
+    const read = withStatus(reading, STATUS.finished, () => '2026-11-02T10:00:00.000Z')
+    expect(read).toMatchObject({ status: STATUS.finished, startedAt: NOW, finishedAt: '2026-11-02T10:00:00.000Z' })
+    // Abandoning keeps how far you got.
+    const stopped = withStatus({ ...reading, bookProgress: { percent: 34, updatedAt: NOW } }, STATUS.abandoned, () => NOW)
+    expect(stopped).toMatchObject({ status: STATUS.abandoned, bookProgress: { percent: 34 } })
+  })
+})
+
