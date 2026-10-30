@@ -8,6 +8,7 @@ import { useMaybeSession } from '../lib/auth'
 import { parseSeries } from '../lib/bookhive/series'
 import { STATUS } from '../lib/bookhive/types'
 import { findBylineAuthor, type BylineBook } from '../lib/byline'
+import { FEATURES } from '../lib/features'
 import { formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { authorPath, bookPath } from '../lib/paths'
@@ -27,7 +28,7 @@ export function SeriesPage() {
   useDocumentTitle(title)
 
   const forthcoming = useMemo<BylineBook[]>(() => {
-    const author = byline.data ? findBylineAuthor(byline.data, name) : null
+    const author = FEATURES.byline && byline.data ? findBylineAuthor(byline.data, name) : null
     const wanted = series.trim().toLowerCase()
     return (author?.books ?? []).filter(
       (b) => b.value.status === 'forthcoming' && b.value.series?.name?.trim().toLowerCase() === wanted,

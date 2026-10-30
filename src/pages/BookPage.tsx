@@ -18,6 +18,7 @@ import type { HiveActivity, HiveBookDetail, HiveComment, HiveReview } from '../l
 import { bookhiveBookUrl } from '../lib/bookhive/catalog'
 import { describeSeries, parseSeries } from '../lib/bookhive/series'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookIdentifiers, type BookStatus, type CatalogBook } from '../lib/bookhive/types'
+import { FEATURES } from '../lib/features'
 import { displayName, formatDate, plural } from '../lib/format'
 import { useBookWrites, useCatalog, useDocumentTitle, useHiveBook, useMyLibrary } from '../lib/hooks'
 import { useNetwork, type Reader } from '../lib/network'
@@ -177,7 +178,7 @@ export function BookPage() {
         </section>
       )}
 
-      <BylinePanel hiveId={hiveId} identifiers={identifiers} />
+      {FEATURES.byline && <BylinePanel hiveId={hiveId} identifiers={identifiers} />}
 
       {me && <NetworkReaders did={me.did} readers={network.readers} entry={known} hiveId={hiveId} identifiers={identifiers} loading={network.status === 'loading'} />}
 
