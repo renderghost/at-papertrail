@@ -23,6 +23,8 @@ const FixPage = lazy(() => import('./pages/Fix').then((m) => ({ default: m.FixPa
 const SwitchPage = lazy(() => import('./pages/Switch').then((m) => ({ default: m.SwitchPage })))
 const ScanPage = lazy(() => import('./pages/Scan').then((m) => ({ default: m.ScanPage })))
 const SeriesPage = lazy(() => import('./pages/SeriesPage').then((m) => ({ default: m.SeriesPage })))
+const TwinsPage = lazy(() => import('./pages/Twins').then((m) => ({ default: m.TwinsPage })))
+const WantToReadPage = lazy(() => import('./pages/WantToRead').then((m) => ({ default: m.WantToReadPage })))
 
 function OnDemand({ children }: { children: ReactNode }) {
   return <Suspense fallback={<Loading />}>{children}</Suspense>
@@ -81,6 +83,8 @@ function AppRoutes() {
           <Route path="add" element={<AddBook />} />
           <Route path="feed" element={<Feed />} />
           <Route path="club" element={<BookClub />} />
+          <Route path="twins" element={<OnDemand><TwinsPage /></OnDemand>} />
+          <Route path="want-to-read" element={<OnDemand><WantToReadPage /></OnDemand>} />
           <Route path="covered" element={<OnDemand><Covered /></OnDemand>} />
           <Route path="covered/:period" element={<OnDemand><Covered /></OnDemand>} />
           <Route path="import" element={<OnDemand><ImportPage /></OnDemand>} />

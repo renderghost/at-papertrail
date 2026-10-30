@@ -324,6 +324,7 @@ function ScanResult({ mode, found, onNext }: { mode: Mode; found: { isbn: string
               readers={network.readers}
               entry={mine}
               hiveId={book.hiveId}
+              title={book.title}
               identifiers={{ ...book.identifiers, hiveId: book.hiveId }}
               loading={network.status === 'loading'}
             />

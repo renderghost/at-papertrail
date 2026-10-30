@@ -11,8 +11,8 @@ import { BOOKHIVE_DID, CATALOG_COLLECTION, blobCid, type CatalogBook } from './t
  */
 
 const limit = createLimiter(6)
-/** Series lookups queue apart, so a page's covers never wait behind them. */
-const background = createLimiter(4)
+/** Series lookups queue apart, so a page's covers never wait behind them (BookHive's PDS speaks HTTP/2, so both lanes share one connection). */
+const background = createLimiter(10)
 
 export function catalogPds(): Promise<string> {
   return resolvePds(BOOKHIVE_DID)

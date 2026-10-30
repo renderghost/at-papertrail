@@ -35,6 +35,14 @@ export function BookClub() {
           <p className="lede">
             For every book you're reading, the people you follow who are reading it now or have read it before.
           </p>
+          <div className="row page-actions">
+            <Link to="/twins" className="btn btn-sm">
+              Readers like you
+            </Link>
+            <Link to="/want-to-read" className="btn btn-sm">
+              Your want-to-read list, asked
+            </Link>
+          </div>
         </div>
       </div>
 
