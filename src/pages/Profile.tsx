@@ -187,7 +187,7 @@ export function Profile() {
 
           <section className="section">
             <div className="section-title">
-              <h2>Shelves</h2>
+              <h2>Books</h2>
               <span className="count">{plural(entries.length, 'book')}</span>
             </div>
             <Shelves entries={entries} emptyMessage={`${displayName(p)} hasn't logged any books on BookHive yet.`} />

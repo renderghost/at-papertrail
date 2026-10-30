@@ -41,3 +41,41 @@ export function shelvesPath(handleOrDid: string): string {
 export function shelfPath(handleOrDid: string, rkey: string): string {
   return `/shelves/${handleOrDid}/${rkey}`
 }
+
+/**
+ * The app's own pages (#104): two levels at most, an area then its tabs.
+ * Library's Overview is the home page.
+ */
+export const PATHS = {
+  overview: '/',
+  books: '/library/books',
+  lists: '/library/lists',
+  manage: '/library/manage',
+  scan: '/library/manage/scan',
+  import: '/library/manage/import',
+  export: '/library/manage/export',
+  fix: '/library/manage/fix',
+  feed: '/friends',
+  club: '/friends/club',
+  likeYou: '/friends/like-you',
+  askAround: '/friends/ask-around',
+  becauseYouLoved: '/discover',
+  nextRead: '/discover/next-read',
+  series: '/discover/series',
+  recommendations: '/discover/recommendations',
+  browse: '/discover/browse',
+  search: '/discover/search',
+  covered: '/covered',
+  switch: '/switch',
+} as const
+
+/** Discover › Search, with what to search for: "/discover/search?q=dune". */
+export function searchPath(q?: string): string {
+  const query = q?.trim()
+  return query ? `${PATHS.search}?q=${encodeURIComponent(query)}` : PATHS.search
+}
+
+/** A genre under Browse all, in a language ("" for every language). */
+export function genrePath(genre: string, language?: string): string {
+  return `${PATHS.browse}/genres/${encodeURIComponent(genre)}${language !== undefined ? `?language=${encodeURIComponent(language)}` : ''}`
+}

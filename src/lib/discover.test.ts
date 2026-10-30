@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HiveBook } from './bookhive/api'
 import { STATUS, type BookEntry, type BookRecord } from './bookhive/types'
-import { excluded, isCollection, recommendFor, seedsFrom, telling } from './discover'
+import { excluded, isCollection, lovedBy, lovedInNetwork, popularWithTwins, recommendFor, seedsFrom, telling } from './discover'
 import { OCCASIONS, pagesPerDay, pickFor, scoreFor, surprise, type Candidate } from './nextRead'
 import { tasteTwins } from './taste'
 
@@ -104,5 +104,61 @@ describe('pick my next read', () => {
     expect(pagesPerDay([])).toBe(30)
     expect(surprise(shelf, () => 0)?.entry.value.title).toBe('Doorstop')
     expect(surprise([], () => 0.5)).toBeNull()
+  })
+})
+
+describe('recommendations', () => {
+  // Three books you have, rated by each reader: Piranesi, Dune, Station Eleven.
+  const shared = (did: string, [a, b, c]: number[]) => [
+    entry(did, 'Piranesi', 'Susanna Clarke', { stars: a }),
+    entry(did, 'Dune', 'Frank Herbert', { stars: b }),
+    entry(did, 'Station Eleven', 'Emily St. John Mandel', { stars: c }),
+  ]
+  const reader = (name: string, stars: number[], books: [string, string, Partial<BookRecord>][]) => {
+    const did = `did:plc:${name.toLowerCase()}`
+    return { profile: { did, handle: `${name.toLowerCase()}.test`, displayName: name }, books: [...shared(did, stars), ...books.map(([t, a, v]) => entry(did, t, a, v))] }
+  }
+  const erin = reader('Erin', [10, 9, 7], [
+    ['The Starless Sea', 'Erin Morgenstern', { stars: 10 }],
+    ['Circe', 'Madeline Miller', { stars: 8 }],
+    ['The Hobbit', 'J. R. R. Tolkien', { stars: 10 }],
+    ['Middlemarch', 'George Eliot', { stars: 9 }],
+    ['Beloved', 'Toni Morrison', { stars: 9 }],
+    ['The Earthsea Quartet', 'Ursula K. Le Guin', { stars: 10 }],
+    ['Dracula', 'Bram Stoker', { stars: 9, status: STATUS.abandoned }],
+  ])
+  const finn = reader('Finn', [9, 9, 6], [
+    ['The Starless Sea', 'Erin Morgenstern', { stars: 9 }],
+    ['Circe', 'Madeline Miller', { stars: 9 }],
+    ['Gideon the Ninth', 'Tamsyn Muir', { stars: 6 }],
+  ])
+  // Rates everything you love low: not like you at all.
+  const gus = reader('Gus', [2, 2, 10], [
+    ['The Martian', 'Andy Weir', { stars: 9, finishedAt: '2026-06-01T00:00:00.000Z' }],
+    ['The Da Vinci Code', 'Dan Brown', { stars: 10, finishedAt: '2024-05-01T00:00:00.000Z' }],
+  ])
+  const twins = tasteTwins(mine, [gus, finn, erin], me)
+  const score = (did: string) => twins.find((t) => t.reader.profile.did === did)!.match.score!
+
+  it('ranks what the readers most like you loved, the more of them the higher, never what you have', () => {
+    expect(score('did:plc:gus')).toBeLessThan(60)
+    const picks = popularWithTwins(twins, excluded(mine, []), { perReader: 2 })
+    // Two readers like you loved the first two; then one reader's favourites, two at most;
+    // never a box set, a book they gave up on, or anything from someone unlike you.
+    expect(picks.map((p) => p.book.value.title)).toEqual(['The Starless Sea', 'Circe', 'The Hobbit', 'Middlemarch'])
+    expect(lovedBy(picks[0]!)).toBe(`Loved by Erin (${score('did:plc:erin')}% match) and 1 other`)
+    expect(lovedBy(picks[2]!)).toBe(`Loved by Erin (${score('did:plc:erin')}% match)`)
+  })
+
+  it('leaves out what you waved away', () => {
+    const picks = popularWithTwins(twins, excluded(mine, ['bk_thestarlesssea']))
+    expect(picks.map((p) => p.book.value.title)).not.toContain('The Starless Sea')
+  })
+
+  it('then what anyone you follow loved lately, that the first list didn’t have', () => {
+    const skip = excluded(mine, [])
+    for (const p of popularWithTwins(twins, skip)) skip.add(`hive:${p.book.value.hiveId}`)
+    const loved = lovedInNetwork([gus, finn, erin, reader('Me', [10, 9, 7], [['Mine', 'Me', { stars: 10 }]])], skip, { myDid: 'did:plc:me', since: '2025-10-30T00:00:00.000Z' })
+    expect(loved.map((p) => [p.book.value.title, lovedBy(p)])).toEqual([['The Martian', 'Loved by Gus']])
   })
 })

@@ -11,19 +11,20 @@ import { describeError } from '../lib/errors'
 import { displayName, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary, useProfile } from '../lib/hooks'
 import { isPopfeedShelf, itemIsBook, listTags, parseTags, type BookList, type ListItem } from '../lib/lists'
-import { bookPath, profilePath, shelfPath, shelvesPath } from '../lib/paths'
+import { bookPath, PATHS, profilePath, shelfPath, shelvesPath } from '../lib/paths'
 import { useListWrites, useLists } from '../lib/useLists'
 import { useCanWrite } from '../lib/usePeople'
 
-/** /shelves/:actor: someone's lists. */
-export function ListsPage() {
-  const { actor = '' } = useParams()
+/** /shelves/:actor: someone's lists. Yours are also Library › Lists (#104). */
+export function ListsPage({ actor: given }: { actor?: string }) {
+  const params = useParams()
+  const actor = given ?? params.actor ?? ''
   const me = useMaybeSession()
   const profile = useProfile(actor)
   const lists = useLists(profile.data?.did)
   const isMe = !!me && profile.data?.did === me.did
   const { allowed } = useCanWrite('lists')
-  useDocumentTitle(profile.data ? `Lists by ${displayName(profile.data)}` : undefined)
+  useDocumentTitle(profile.data ? (isMe ? 'Your lists' : `Lists by ${displayName(profile.data)}`) : undefined)
 
   if (profile.isPending) return <Loading />
   if (profile.isError) return <ErrorNote error={profile.error} />
@@ -34,7 +35,7 @@ export function ListsPage() {
         <div className="row" style={{ gap: 16, alignItems: 'center' }}>
           <Avatar profile={p} size={56} />
           <div>
-            <p className="kicker">{isMe ? 'Your lists' : 'Lists'}</p>
+            <p className="kicker">{isMe ? 'Library' : 'Lists'}</p>
             <h1>{isMe ? 'Your lists' : `Lists by ${displayName(p)}`}</h1>
             <p className="muted">
               <Link to={profilePath(p.handle)}>@{p.handle}</Link>
@@ -108,7 +109,7 @@ function ListHeader({
 }: {
   list: BookList
   owner: { handle: string; displayName?: string }
-  kicker: string
+  kicker: React.ReactNode
   children?: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
@@ -230,7 +231,7 @@ function EditableList({ list, handle }: { list: BookList; handle: string }) {
 
   return (
     <>
-      <ListHeader list={list} owner={{ handle }} kicker="Your list">
+      <ListHeader list={list} owner={{ handle }} kicker={<Link to={PATHS.lists}>Your lists</Link>}>
         {allowed && !editing && (
           <button className="btn btn-sm" onClick={() => setEditing(true)}>
             Edit

@@ -7,8 +7,8 @@ import { Icon } from '../components/Icon'
 import { searchHive, type HiveBook } from '../lib/bookhive/api'
 import { displayAuthors, firstAuthor } from '../lib/bookhive/authors'
 import { STATUS, STATUS_LABEL, type BookEntry, type BookStatus } from '../lib/bookhive/types'
-import { useBookWrites, useDebounced, useMyLibrary } from '../lib/hooks'
-import { bookPath } from '../lib/paths'
+import { useBookWrites, useDebounced, useDocumentTitle, useMyLibrary } from '../lib/hooks'
+import { bookPath, PATHS } from '../lib/paths'
 import {
   bookKey,
   fullTitle,
@@ -22,7 +22,9 @@ import {
 
 const QUICK_STATUSES: BookStatus[] = [STATUS.wantToRead, STATUS.reading, STATUS.finished]
 
+/** Discover › Search (#104): the one book search, which is also how you add a book. */
 export function AddBook() {
+  useDocumentTitle('Search')
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState(params.get('q') ?? '')
   const q = useDebounced(query.trim(), 400)
@@ -49,14 +51,14 @@ export function AddBook() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Add a book</p>
-          <h1>What are you reading?</h1>
+          <p className="kicker">Discover</p>
+          <h1>Find a book</h1>
           <p className="lede">
-            BookHive's catalogue first, then Open Library and Google Books. Books BookHive knows appear on bookhive.buzz
-            too.
+            BookHive's catalogue first, then Open Library and Google Books. Add any result to your library; books BookHive
+            knows show on bookhive.buzz too.
           </p>
         </div>
-        <Link className="btn" to="/scan">
+        <Link className="btn" to={PATHS.scan}>
           <Icon name="scan" size={18} /> Scan a barcode
         </Link>
       </div>

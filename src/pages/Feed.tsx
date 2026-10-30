@@ -32,8 +32,8 @@ export function Feed() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Discovery</p>
-          <h1>What your network is reading</h1>
+          <p className="kicker">Friends</p>
+          <h1>What your friends are reading</h1>
           <p className="lede">Starts, finishes, reviews and wish lists from the people you follow on Bluesky.</p>
         </div>
       </div>

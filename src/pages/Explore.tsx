@@ -1,18 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { Empty, ErrorNote, Loading, Stars } from '../components/bits'
+import { Empty, ErrorNote, Loading } from '../components/bits'
 import { BookCard, CardGrid, PersonCard } from '../components/Cards'
-import { useMaybeSession } from '../lib/auth'
 import { distinctWorks, inLanguage, readerLanguage } from '../lib/bibliography'
-import { sameBookKeys } from '../lib/bookclub'
 import { getExplore, getGenreBooks, getLanguages, listGenres, type HiveBook } from '../lib/bookhive/api'
-import type { BookEntry } from '../lib/bookhive/types'
-import { displayName, plural } from '../lib/format'
-import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
-import { useNetwork, type Reader } from '../lib/network'
-import { authorPath } from '../lib/paths'
-import { LOVED } from '../lib/taste'
+import { plural } from '../lib/format'
+import { useDocumentTitle } from '../lib/hooks'
+import { authorPath, genrePath, PATHS } from '../lib/paths'
 
 const HOUR = 60 * 60 * 1000
 
@@ -35,8 +30,6 @@ function useExploreLanguage() {
   return { language, setLanguage, languages: languages.data ?? [] }
 }
 
-export const genrePath = (genre: string, language?: string) => `/explore/genres/${encodeURIComponent(genre)}${language !== undefined ? `?language=${encodeURIComponent(language)}` : ''}`
-
 function LanguagePicker({ language, languages, onChange }: { language: string; languages: string[]; onChange: (l: string) => void }) {
   return (
     <label className="field inline-field">
@@ -53,10 +46,9 @@ function LanguagePicker({ language, languages, onChange }: { language: string; l
   )
 }
 
-/** Explore BookHive (#79): its genres and most-read authors in your language, and what the people you follow loved lately. */
+/** Discover › Browse all (#79, #104): BookHive's genres and most-read authors, in your language. Public. */
 export function ExplorePage() {
-  useDocumentTitle('Explore BookHive')
-  const me = useMaybeSession()
+  useDocumentTitle('Browse BookHive')
   const { language, setLanguage, languages } = useExploreLanguage()
   const explore = useQuery({ queryKey: ['explore', language], queryFn: ({ signal }) => getExplore(language || undefined, signal), staleTime: 6 * HOUR })
   const genres = useQuery({ queryKey: ['genres'], queryFn: ({ signal }) => listGenres({ signal }), staleTime: 24 * HOUR })
@@ -69,14 +61,12 @@ export function ExplorePage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Explore</p>
-          <h1>Explore BookHive</h1>
-          <p className="lede">Its biggest genres and most-read authors, and what the people you follow have loved lately.</p>
+          <p className="kicker">Discover</p>
+          <h1>Browse BookHive</h1>
+          <p className="lede">Its biggest genres and most-read authors, in the language you choose.</p>
         </div>
         <LanguagePicker language={language} languages={languages} onChange={setLanguage} />
       </div>
-
-      {me && <NetworkPicks did={me.did} />}
 
       <section className="section">
         <div className="section-title">
@@ -125,63 +115,6 @@ export function ExplorePage() {
   )
 }
 
-type Loved = { book: BookEntry; readers: Reader[]; average: number }
-
-/** Community picks from your own network: books the people you follow loved in the past year, that you don't have. */
-function NetworkPicks({ did }: { did: string }) {
-  const network = useNetwork(did)
-  const library = useMyLibrary()
-  const picks = useMemo(() => {
-    const mine = new Set((library.data ?? []).flatMap(sameBookKeys))
-    const since = new Date(Date.now() - 365 * 24 * HOUR).toISOString()
-    const byBook = new Map<string, Loved>()
-    for (const reader of network.readers) {
-      if (reader.profile.did === did) continue
-      for (const b of reader.books) {
-        if ((b.value.stars ?? 0) < LOVED || (b.value.finishedAt ?? b.value.createdAt) < since) continue
-        const keys = sameBookKeys(b)
-        if (keys.some((k) => mine.has(k))) continue
-        const key = keys[1]!
-        const seen = byBook.get(key) ?? { book: b, readers: [], average: 0 }
-        if (!seen.readers.includes(reader)) {
-          seen.average = (seen.average * seen.readers.length + b.value.stars!) / (seen.readers.length + 1)
-          seen.readers.push(reader)
-        }
-        byBook.set(key, seen)
-      }
-    }
-    return [...byBook.values()].sort((a, b) => b.readers.length - a.readers.length || b.average - a.average).slice(0, 12)
-  }, [network.readers, library.data, did])
-
-  if (!picks.length) return null
-  return (
-    <section className="section">
-      <div className="section-title">
-        <h2>Loved in your network</h2>
-        <span className="count">the past year</span>
-      </div>
-      <CardGrid size="compact" className="network-picks" label="Loved in your network">
-        {picks.map(({ book, readers, average }) => {
-          const v = book.value
-          return (
-            <BookCard
-              key={book.uri}
-              size="compact"
-              book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry: book }}
-              context={
-                <p>
-                  Loved by {displayName(readers[0]!.profile)}
-                  {readers.length > 1 ? ` and ${plural(readers.length - 1, 'other')}` : ''} <Stars stars={Math.round(average)} size={12} />
-                </p>
-              }
-            />
-          )
-        })}
-      </CardGrid>
-    </section>
-  )
-}
-
 /** A genre's most-read books on BookHive, one edition each, in your language (#79). */
 export function GenrePage() {
   const { genre = '' } = useParams()
@@ -199,7 +132,7 @@ export function GenrePage() {
       <div className="page-header">
         <div>
           <p className="kicker">
-            <Link to={`/explore${language ? `?language=${encodeURIComponent(language)}` : ''}`}>Explore</Link> · Genre
+            <Link to={`${PATHS.browse}${language ? `?language=${encodeURIComponent(language)}` : ''}`}>Browse all</Link> · Genre
           </p>
           <h1>{genre}</h1>
           <p className="lede">The most-read {genre.toLowerCase()} on BookHive, one edition of each.</p>

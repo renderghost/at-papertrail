@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon'
 import { availablePeriods, MONTHS, parsePeriodSlug, periodSlug, readsIn } from '../lib/covered'
 import { plural } from '../lib/format'
 import { useMyLibrary } from '../lib/hooks'
+import { PATHS } from '../lib/paths'
 
 export function Covered() {
   const { period: slug } = useParams()
@@ -39,7 +40,7 @@ export function Covered() {
       {periods.length === 0 ? (
         <Empty title="Nothing to cover yet">
           <p>Finish a book (or log one you finished before) and your first Covered appears here.</p>
-          <Link className="btn btn-primary" to="/add">
+          <Link className="btn btn-primary" to={PATHS.search}>
             Log a book
           </Link>
         </Empty>

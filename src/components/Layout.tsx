@@ -1,19 +1,14 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useId, useRef, useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth, useMaybeSession } from '../lib/auth'
 import { FEATURES } from '../lib/features'
+import { displayName } from '../lib/format'
 import { useProfile } from '../lib/hooks'
-import { loginPath, profilePath } from '../lib/paths'
+import { AREAS, areaOf, currentness, normalisePath, tabOf, type NavArea } from '../lib/nav'
+import { loginPath, PATHS, profilePath } from '../lib/paths'
 import { Avatar } from './bits'
-import { Icon, type IconName } from './Icon'
-
-const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
-  { to: '/', label: 'Library', icon: 'library', end: true },
-  { to: '/feed', label: 'Feed', icon: 'feed' },
-  { to: '/club', label: 'Book club', icon: 'club' },
-  { to: '/discover', label: 'Discover', icon: 'compass' },
-  { to: '/covered', label: 'Covered', icon: 'covered' },
-]
+import { Icon } from './Icon'
+import { usePopoverPlacement } from './popover'
 
 type Theme = 'light' | 'dark'
 const THEME_KEY = 'papertrail-theme'
@@ -27,10 +22,11 @@ function storedTheme(): Theme | null {
   }
 }
 
-function ThemeToggle() {
+/** Light or dark: your choice, remembered in this browser, else your system's. */
+function useTheme() {
   const [theme, setTheme] = useState<Theme | null>(storedTheme)
   const systemDark = typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
-  const effective = theme ?? (systemDark ? 'dark' : 'light')
+  const dark = (theme ?? (systemDark ? 'dark' : 'light')) === 'dark'
 
   useEffect(() => {
     if (theme) document.documentElement.dataset.theme = theme
@@ -38,7 +34,7 @@ function ThemeToggle() {
   }, [theme])
 
   const toggle = () => {
-    const next: Theme = effective === 'dark' ? 'light' : 'dark'
+    const next: Theme = dark ? 'light' : 'dark'
     setTheme(next)
     try {
       localStorage.setItem(THEME_KEY, next)
@@ -46,19 +42,103 @@ function ThemeToggle() {
       // Private mode: the choice just won't persist.
     }
   }
+  return { dark, toggle }
+}
+
+function ThemeToggle() {
+  const { dark, toggle } = useTheme()
+  const label = `Switch to ${dark ? 'light' : 'dark'} mode`
+  return (
+    <button className="icon-btn" onClick={toggle} title={label}>
+      <Icon name={dark ? 'sun' : 'moon'} label={label} />
+    </button>
+  )
+}
+
+/**
+ * Your account (#104): your profile, the guide for switching from another
+ * app, light or dark, and signing out. Plain links and buttons in a popover,
+ * like ⋯ More: Tab moves through them, Escape closes it.
+ */
+function AccountMenu({ did, handle }: { did: string; handle: string }) {
+  const { signOut } = useAuth()
+  const profile = useProfile(did)
+  const { dark, toggle } = useTheme()
+  const id = useId()
+  const trigger = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  // The masthead stays put as the page scrolls, so the menu can too.
+  usePopoverPlacement(trigger, panel)
+  const close = () => panel.current?.hidePopover()
+  const me = profile.data ?? { handle }
 
   return (
-    <button className="icon-btn" onClick={toggle} title={`Switch to ${effective === 'dark' ? 'light' : 'dark'} mode`}>
-      <Icon name={effective === 'dark' ? 'sun' : 'moon'} label={`Switch to ${effective === 'dark' ? 'light' : 'dark'} mode`} />
-    </button>
+    <>
+      <button ref={trigger} type="button" className="account-btn" popoverTarget={id} aria-label={`Your account, @${me.handle}`} title={`@${me.handle}`}>
+        <Avatar profile={me} size={32} />
+      </button>
+      <div ref={panel} id={id} popover="auto" className="more-menu account-menu">
+        <p className="account-who">
+          <strong>{displayName(me)}</strong>
+          <span className="small muted">@{me.handle}</span>
+        </p>
+        <Link to={profilePath(me.handle)} onClick={close}>
+          Your profile
+        </Link>
+        <Link to={PATHS.switch} onClick={close}>
+          Switch from another app
+        </Link>
+        <button type="button" onClick={toggle}>
+          {dark ? 'Light mode' : 'Dark mode'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            close()
+            void signOut()
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+    </>
+  )
+}
+
+/** An area's tabs, the second and last level. On a phone they scroll sideways, keeping the current one in view. */
+function Tabs({ area, path }: { area: NavArea; path: string }) {
+  const tab = tabOf(area, path)
+  const strip = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const s = strip.current
+    const el = s?.querySelector<HTMLElement>('[aria-current]')
+    if (!s || !el) return
+    if (el.offsetLeft < s.scrollLeft || el.offsetLeft + el.offsetWidth > s.scrollLeft + s.clientWidth) {
+      s.scrollLeft = el.offsetLeft - (s.clientWidth - el.offsetWidth) / 2
+    }
+  }, [tab])
+
+  return (
+    <nav className="tabs" aria-label={area.label}>
+      <div className="tabs-inner" ref={strip}>
+        {area.tabs.map((t) => (
+          <Link key={t.to} to={t.to} aria-current={currentness(path, t.to, t === tab)}>
+            {t.label}
+          </Link>
+        ))}
+      </div>
+    </nav>
   )
 }
 
 export function Layout() {
   const me = useMaybeSession()
-  const { signOut } = useAuth()
-  const profile = useProfile(me?.did)
   const location = useLocation()
+  const path = normalisePath(location.pathname)
+  const area = me ? areaOf(path) : undefined
+  // A handle that's still a DID: there's no handle to show yet.
+  const handle = me ? (me.session.handle.startsWith('did:') ? me.did : me.session.handle) : ''
 
   return (
     <>
@@ -69,41 +149,37 @@ export function Layout() {
           </Link>
           {me && (
             <nav className="nav" aria-label="Main">
-              {NAV.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end}>
+              {AREAS.map((a) => (
+                <Link key={a.to} to={a.to} aria-current={currentness(path, a.to, a === area)}>
                   <span className="nav-icon">
-                    <Icon name={item.icon} size={22} />
+                    <Icon name={a.icon} size={22} />
                   </span>
-                  {item.label}
-                </NavLink>
+                  {a.label}
+                </Link>
               ))}
             </nav>
           )}
           <div className="masthead-tools">
             {me ? (
-              <Link to="/add" className="btn btn-accent btn-sm" title="Add a book">
-                <Icon name="plus" size={16} />
-                <span>Add</span>
-              </Link>
+              <>
+                <Link to={PATHS.search} className="btn btn-accent btn-sm" title="Find a book">
+                  <Icon name="search" size={16} />
+                  <span>Search</span>
+                </Link>
+                <AccountMenu did={me.did} handle={handle} />
+              </>
             ) : (
-              <Link to={loginPath(location.pathname + location.search)} className="btn btn-primary btn-sm">
-                Sign in
-              </Link>
-            )}
-            <ThemeToggle />
-            {profile.data && (
-              <Link to={profilePath(profile.data.handle)} title={`@${profile.data.handle}`}>
-                <Avatar profile={profile.data} size={32} />
-              </Link>
-            )}
-            {me && (
-              <button className="icon-btn" onClick={() => void signOut()} title="Sign out">
-                <Icon name="logout" label="Sign out" />
-              </button>
+              <>
+                <Link to={loginPath(location.pathname + location.search)} className="btn btn-primary btn-sm">
+                  Sign in
+                </Link>
+                <ThemeToggle />
+              </>
             )}
           </div>
         </div>
       </header>
+      {area && area.tabs.length > 0 && <Tabs area={area} path={path} />}
       <main className="page">
         <Outlet />
       </main>

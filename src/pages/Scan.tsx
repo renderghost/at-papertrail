@@ -14,7 +14,7 @@ import { useBookWrites, useDocumentTitle, useMyCopy } from '../lib/hooks'
 import { bookKeys, libraryIndex } from '../lib/import/match'
 import { parseIsbn } from '../lib/isbn'
 import { useNetwork } from '../lib/network'
-import { bookPath } from '../lib/paths'
+import { bookPath, PATHS, searchPath } from '../lib/paths'
 import { bookCodes, createDetector, lookupIsbn, type Detector, type ScannedBook } from '../lib/scanner'
 import { newBookRecord } from '../lib/search'
 import { NetworkReaders } from './BookPage'
@@ -145,7 +145,9 @@ export function ScanPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Your library</p>
+          <p className="kicker">
+            <Link to={PATHS.manage}>Manage</Link>
+          </p>
           <h1>Scan a book</h1>
           <p className="lede">Point your camera at the barcode on the back. Frames are read on this device, never uploaded.</p>
         </div>
@@ -288,7 +290,7 @@ function ScanResult({ mode, found, onNext }: { mode: Mode; found: { isbn: string
       {!book ? (
         <div className="notice">
           {found.error ?? `Nobody seems to know ISBN ${found.isbn}: not BookHive, Open Library or Google Books.`}{' '}
-          <Link to={`/add?q=${found.isbn}`}>Search by title instead</Link>.
+          <Link to={searchPath(found.isbn)}>Search by title instead</Link>.
         </div>
       ) : (
         <>

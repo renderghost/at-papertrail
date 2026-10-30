@@ -23,7 +23,7 @@ export function TwinsPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Taste twins</p>
+          <p className="kicker">Friends</p>
           <h1>Readers like you</h1>
           <p className="lede">
             The people you follow, ranked by how alike your reading is: the books you share, how closely your ratings agree, and what you both

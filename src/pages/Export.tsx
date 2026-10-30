@@ -6,6 +6,7 @@ import { describeError } from '../lib/errors'
 import { download, exportRecords, goodreadsCsv } from '../lib/export'
 import { plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
+import { PATHS } from '../lib/paths'
 import { useLists } from '../lib/useLists'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -47,7 +48,9 @@ export function ExportPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Your library</p>
+          <p className="kicker">
+            <Link to={PATHS.manage}>Manage</Link>
+          </p>
           <h1>Take it with you</h1>
           <p className="lede">
             Your books already live on your own PDS, so they go wherever you go. These files are for backups, spreadsheets
@@ -116,7 +119,7 @@ export function ExportPage() {
         </div>
       )}
       <p className="small muted section">
-        Coming the other way? <Link to="/import">Import from Goodreads, StoryGraph or Hardcover</Link>.
+        Coming the other way? <Link to={PATHS.import}>Import from Goodreads, StoryGraph or Hardcover</Link>.
       </p>
     </>
   )

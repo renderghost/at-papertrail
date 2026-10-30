@@ -6,7 +6,7 @@ import { displayAuthors, firstAuthor } from './bookhive/authors'
 import { STATUS, type BookEntry, type BookIdentifiers } from './bookhive/types'
 import { displayName } from './format'
 import { bookKey } from './search'
-import { LOVED, type Twin } from './taste'
+import { LOVED, theirRating, type ReaderLike, type Twin } from './taste'
 
 /**
  * "Because you loved X" (#71): books like the ones you rated highest, from
@@ -146,4 +146,88 @@ export function saveNotForMe(did: string, hiveIds: string[]): void {
   } catch {
     // Private mode: it just won't be remembered.
   }
+}
+
+export type NetworkPick = {
+  /** The copy to show: from the reader most like you who has it. */
+  book: BookEntry
+  /** Who loved it, most like you first, with their match where it's known. */
+  readers: { profile: Profile; stars: number; match: number | null }[]
+}
+
+/** The same book from different readers, once, with everyone who loved it. */
+function gather(found: { book: BookEntry; reader: NetworkPick['readers'][number] }[]): NetworkPick[] {
+  const picks: NetworkPick[] = []
+  const byKey = new Map<string, NetworkPick>()
+  for (const { book, reader } of found) {
+    const keys = sameBookKeys(book)
+    let pick = keys.map((k) => byKey.get(k)).find(Boolean)
+    if (!pick) picks.push((pick = { book, readers: [] }))
+    if (!pick.readers.some((r) => r.profile.did === reader.profile.did)) pick.readers.push(reader)
+    for (const k of keys) byKey.set(k, pick)
+  }
+  return picks
+}
+
+const average = (p: NetworkPick) => p.readers.reduce((sum, r) => sum + r.stars, 0) / p.readers.length
+
+/**
+ * Popular with readers like you (#104): the books the people most like you
+ * loved that you don't have. A book rises with every one of them who loved
+ * it, the more alike the higher; any one reader's own favourites are kept
+ * to a few, so no single person fills the page.
+ */
+export function popularWithTwins<R extends ReaderLike & { profile: Profile }>(
+  twins: Twin<R>[],
+  skip: Set<string>,
+  { minMatch = 60, perReader = 3, limit = 20 }: { minMatch?: number; perReader?: number; limit?: number } = {},
+): NetworkPick[] {
+  const found: Parameters<typeof gather>[0] = []
+  for (const { reader, match } of twins) {
+    if (match.score === null || match.score < minMatch) continue
+    for (const book of match.theirPicks) {
+      if (book.value.status === STATUS.abandoned || isCollection(book.value.title)) continue
+      if (sameBookKeys(book).some((k) => skip.has(k))) continue
+      found.push({ book, reader: { profile: reader.profile, stars: theirRating(book, reader.reviews ?? [])!, match: match.score } })
+    }
+  }
+  const weight = (p: NetworkPick) => p.readers.reduce((sum, r) => sum + r.match!, 0)
+  const ranked = gather(found).sort((a, b) => weight(b) - weight(a) || average(b) - average(a))
+  const alone = new Map<string, number>()
+  return ranked
+    .filter((p) => {
+      if (p.readers.length > 1) return true
+      const did = p.readers[0]!.profile.did
+      alone.set(did, (alone.get(did) ?? 0) + 1)
+      return alone.get(did)! <= perReader
+    })
+    .slice(0, limit)
+}
+
+/** Loved by people you follow (#79, #104): four stars and up since `since`, that you don't have; the most readers first. */
+export function lovedInNetwork<R extends { profile: Profile; books: BookEntry[] }>(
+  readers: R[],
+  skip: Set<string>,
+  { myDid, since, limit = 20 }: { myDid?: string; since: string; limit?: number },
+): NetworkPick[] {
+  const found: Parameters<typeof gather>[0] = []
+  for (const reader of readers) {
+    if (reader.profile.did === myDid) continue
+    for (const book of reader.books) {
+      const v = book.value
+      if ((v.stars ?? 0) < LOVED || v.status === STATUS.abandoned || (v.finishedAt ?? v.createdAt) < since || isCollection(v.title)) continue
+      if (sameBookKeys(book).some((k) => skip.has(k))) continue
+      found.push({ book, reader: { profile: reader.profile, stars: v.stars!, match: null } })
+    }
+  }
+  return gather(found)
+    .sort((a, b) => b.readers.length - a.readers.length || average(b) - average(a))
+    .slice(0, limit)
+}
+
+/** "Loved by Erin (84% match) and 2 others". */
+export function lovedBy(pick: NetworkPick): string {
+  const [first, ...rest] = pick.readers
+  const match = first!.match !== null ? ` (${first!.match}% match)` : ''
+  return `Loved by ${displayName(first!.profile)}${match}${rest.length ? ` and ${rest.length} ${rest.length === 1 ? 'other' : 'others'}` : ''}`
 }

@@ -20,9 +20,9 @@ function rank({ take }: Row): number {
   return (take.average ?? 3) + 0.5 * take.loved - take.abandoned
 }
 
-/** Your want-to-read list with your network's take on each book (#64), the people most like you first. */
+/** Friends › Ask around (#64, #104): your want-to-read list with your network's take on each book, the people most like you first. */
 export function WantToReadPage() {
-  useDocumentTitle('Want to read, asked')
+  useDocumentTitle('Ask around')
   const { did } = useSession()
   const library = useMyLibrary()
   const network = useNetwork(did)
@@ -44,11 +44,11 @@ export function WantToReadPage() {
     <>
       <div className="page-header">
         <div>
-          <p className="kicker">Ask your network</p>
-          <h1>Your want-to-read list, asked</h1>
+          <p className="kicker">Friends</p>
+          <h1>Ask around</h1>
           <p className="lede">
-            What the people you follow made of each book you want to read: who loved it, who's reading it and who gave up (and where). The
-            readers most like you come first.
+            Your want-to-read list, with what the people you follow made of each book: who loved it, who's reading it and who gave up (and
+            where). The readers most like you come first.
           </p>
         </div>
       </div>
