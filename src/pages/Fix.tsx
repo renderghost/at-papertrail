@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Empty, ErrorNote, Loading, Stars, StatusPill } from '../components/bits'
 import { CatalogPicker } from '../components/CatalogPicker'
-import { Cover } from '../components/Cover'
 import { useSession } from '../lib/auth'
 import { getHiveBook, type HiveBook } from '../lib/bookhive/api'
 import { displayAuthors } from '../lib/bookhive/authors'
@@ -112,11 +111,25 @@ export function FixPage() {
             ) : uncatalogued.length === 0 ? (
               <p className="muted">Every book in your library is in BookHive's catalogue.</p>
             ) : (
-              <ul className="fix-list">
-                {uncatalogued.map((e) => (
-                  <RematchRow key={e.uri} entry={e} onPick={(book) => rematch(e, book)} />
-                ))}
-              </ul>
+              <div className="table-wrap">
+                <table className="book-table fix-table">
+                  <caption className="visually-hidden">Books BookHive's catalogue doesn't know: find each one to match it</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Title</th>
+                      <th scope="col">Author</th>
+                      <th scope="col">Your reading</th>
+                      <th scope="col">Added</th>
+                      <th scope="col">
+                        <span className="visually-hidden">Fix</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  {uncatalogued.map((e) => (
+                    <RematchRow key={e.uri} entry={e} onPick={(book) => rematch(e, book)} />
+                  ))}
+                </table>
+              </div>
             )}
           </section>
 
@@ -148,26 +161,28 @@ export function FixPage() {
   )
 }
 
-function BookLine({ entry }: { entry: BookEntry }) {
+/** A book's cells in a fix table: title, author, what you did with it, and when you added it. */
+function BookCells({ entry }: { entry: BookEntry }) {
   const v = entry.value
   return (
-    <div className="fix-book">
-      <Cover hiveId={v.hiveId} title={v.title} authors={v.authors} entry={entry} size="xs" />
-      <div>
+    <>
+      <th scope="row" className="fix-book">
         <Link className="name" to={bookPath(v.hiveId)} state={{ entry }}>
           {v.title}
         </Link>
-        <div className="small muted">{displayAuthors(v.authors)}</div>
-        <div className="small fix-facts">
+      </th>
+      <td>{displayAuthors(v.authors)}</td>
+      <td>
+        <span className="fix-facts">
           <StatusPill status={v.status} />
           {v.stars ? <Stars stars={v.stars} size={13} /> : null}
           {v.finishedAt && <span>finished {formatDate(v.finishedAt)}</span>}
           {v.previousReads?.length ? <span>{plural(v.previousReads.length, 'earlier read')}</span> : null}
           {v.review?.trim() && <span>reviewed</span>}
-          <span className="muted">added {formatDate(v.createdAt)}</span>
-        </div>
-      </div>
-    </div>
+        </span>
+      </td>
+      <td className="muted">{formatDate(v.createdAt)}</td>
+    </>
   )
 }
 
@@ -176,36 +191,44 @@ function RematchRow({ entry, onPick }: { entry: BookEntry; onPick: (book: HiveBo
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   return (
-    <li className="fix-item">
-      <BookLine entry={entry} />
-      <div className="row">
-        <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Close' : 'Find on BookHive'}
-        </button>
-      </div>
-      {open && (
-        <CatalogPicker
-          initialQuery={rematchQuery(entry.value)}
-          busy={busy}
-          pickLabel="Match"
-          onPick={async (book) => {
-            setBusy(true)
-            setError(null)
-            try {
-              await onPick(book)
-            } catch (err) {
-              setError(describeError(err).message)
-              setBusy(false)
-            }
-          }}
-        />
+    <tbody className="fix-item">
+      <tr>
+        <BookCells entry={entry} />
+        <td>
+          <button className="btn btn-sm" aria-expanded={open} onClick={() => setOpen(!open)}>
+            {open ? 'Close' : 'Find on BookHive'}
+          </button>
+        </td>
+      </tr>
+      {(open || error) && (
+        <tr className="fix-picker">
+          <td colSpan={5}>
+            {open && (
+              <CatalogPicker
+                initialQuery={rematchQuery(entry.value)}
+                busy={busy}
+                pickLabel="Match"
+                onPick={async (book) => {
+                  setBusy(true)
+                  setError(null)
+                  try {
+                    await onPick(book)
+                  } catch (err) {
+                    setError(describeError(err).message)
+                    setBusy(false)
+                  }
+                }}
+              />
+            )}
+            {error && (
+              <div className="notice notice-error" role="alert">
+                {error}
+              </div>
+            )}
+          </td>
+        </tr>
       )}
-      {error && (
-        <div className="notice notice-error" role="alert">
-          {error}
-        </div>
-      )}
-    </li>
+    </tbody>
   )
 }
 
@@ -226,15 +249,36 @@ function DuplicateGroup({
   const onLists = lists.filter((l) => l.items.some((i) => others.some((o) => o.value.hiveId === i.value.identifiers.hiveId))).length
   return (
     <li className="fix-item">
-      <fieldset className="stack">
-        <legend className="small muted">Keep which copy?</legend>
-        {group.map((e) => (
-          <label key={e.uri} className="fix-choice">
-            <input type="radio" name={`keep-${group[0]!.uri}`} checked={e.uri === keep.uri} onChange={() => setKeep(e)} />
-            <BookLine entry={e} />
-          </label>
-        ))}
-      </fieldset>
+      <div className="table-wrap">
+        <table className="book-table fix-table">
+          <caption className="small muted">Keep which copy?</caption>
+          <thead>
+            <tr>
+              <th scope="col">Keep</th>
+              <th scope="col">Title</th>
+              <th scope="col">Author</th>
+              <th scope="col">Your reading</th>
+              <th scope="col">Added</th>
+            </tr>
+          </thead>
+          <tbody>
+            {group.map((e) => (
+              <tr key={e.uri} className={e.uri === keep.uri ? 'selected' : undefined}>
+                <td className="pick">
+                  <input
+                    type="radio"
+                    name={`keep-${group[0]!.uri}`}
+                    aria-label={`Keep the copy added ${formatDate(e.value.createdAt)}`}
+                    checked={e.uri === keep.uri}
+                    onChange={() => setKeep(e)}
+                  />
+                </td>
+                <BookCells entry={e} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {confirming ? (
         <div className="stack">
           <p className="small">

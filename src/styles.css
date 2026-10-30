@@ -2279,7 +2279,7 @@ p {
 }
 
 .unmatched,
-.fix-item {
+li.fix-item {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2379,42 +2379,12 @@ p {
   padding-left: 1.2em;
 }
 
-.fix-book {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  min-width: 0;
-}
-
 .fix-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
   margin-top: 4px;
-}
-
-.fix-item fieldset {
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.fix-choice {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 8px;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.fix-choice:has(input:checked) {
-  background: var(--paper-sunk);
-}
-
-.fix-choice input {
-  margin-top: 6px;
 }
 
 .switch-services {
@@ -3135,4 +3105,21 @@ a.chip:hover {
 
 .book-table tr.selected {
   background: var(--paper-sunk);
+}
+
+.fix-table caption {
+  text-align: left;
+  padding-bottom: 6px;
+}
+
+.fix-table .fix-facts {
+  margin: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.fix-picker td {
+  background: var(--paper-raised);
 }
