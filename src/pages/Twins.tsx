@@ -45,7 +45,7 @@ export function TwinsPage() {
           </Empty>
         )
       ) : (
-        <CardGrid size="large" className="twins" label="Readers like you">
+        <CardGrid size="grid" className="twins" label="Readers like you">
           {twins.map(({ reader, match }) => (
             <PersonCard
               key={reader.profile.did}

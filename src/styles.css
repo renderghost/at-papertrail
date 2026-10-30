@@ -1560,7 +1560,7 @@ p {
 
 .period-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(min(220px, 100%), calc((100% - 32px) / 3)), 1fr));
   gap: 16px;
 }
 
@@ -1945,7 +1945,7 @@ p {
 
 .list-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(min(240px, 100%), calc((100% - 32px) / 3)), 1fr));
   gap: 16px;
 }
 
@@ -2809,27 +2809,16 @@ a.chip:hover {
   flex: 1;
 }
 
-/* Never more than 3 (large) or 5 (compact) across; fewer when cards would get too narrow. */
-.card-grid-large {
-  grid-template-columns: repeat(auto-fill, minmax(max(280px, calc((100% - 24px) / 3)), 1fr));
+/*
+ * Never more than 3 across, and always the full width: a row of fewer cards
+ * stretches to fill it, and narrow screens get fewer columns (one on a phone).
+ */
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(max(min(280px, 100%), calc((100% - 24px) / 3)), 1fr));
 }
 
-.card-grid-compact {
-  grid-template-columns: repeat(auto-fill, minmax(max(150px, calc((100% - 48px) / 5)), 1fr));
-}
-
-.card-grid-list {
+.card-grid.card-grid-list {
   grid-template-columns: minmax(0, 1fr);
-}
-
-@media (max-width: 560px) {
-  .card-grid-large {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .card-grid-compact {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .card {
@@ -2953,23 +2942,6 @@ a.chip:hover {
   width: 64px;
 }
 
-/* Compact: vertical, the cover on top. */
-.book-card-compact,
-.person-card-compact {
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-}
-
-.book-card-compact .cover {
-  width: 100%;
-}
-
-.book-card-compact .card-title,
-.person-card-compact .card-title {
-  font-size: 0.98rem;
-}
-
 /* A book inset in a feed entry: its own, quieter shape. */
 .book-card-embed {
   gap: 12px;
@@ -2990,25 +2962,6 @@ a.chip:hover {
   flex: none;
   width: 48px;
   height: 48px;
-}
-
-.person-card-compact {
-  align-items: center;
-  text-align: center;
-}
-
-.person-card-compact > .avatar {
-  width: 64px;
-  height: 64px;
-}
-
-.person-card-compact .card-body {
-  align-items: center;
-  width: 100%;
-}
-
-.person-card-compact .card-actions {
-  justify-content: center;
 }
 
 /* A book card's foot spans the card: cover and details above, your status below (#106). */
@@ -3033,21 +2986,23 @@ a.chip:hover {
   display: none;
 }
 
-.book-card-compact {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto 1fr;
-  row-gap: 10px;
+/* Buttons on cards take the card's corners and a quiet border: no pills, no black outlines. */
+.card :is(.btn, .icon-btn) {
+  border-radius: var(--radius);
 }
 
-/* Your status for a book (#106): neutral segments; the chosen one fills and gains a tick. */
+.card .btn:not(.btn-primary, .btn-accent, .btn-quiet) {
+  border-color: var(--rule);
+}
+
+/* Your status for a book (#106): neutral segments; the chosen one fills and gains a tick. Full width. */
 .status-control {
   position: relative;
   z-index: 1;
   display: flex;
   width: 100%;
-  max-width: 440px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 999px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
   background: var(--paper-raised);
 }
 
@@ -3073,13 +3028,13 @@ a.chip:hover {
 
 .status-control > button:first-child {
   border-left: 0;
-  border-radius: 999px 0 0 999px;
+  border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px);
 }
 
 .status-control > .status-more {
   flex: none;
   padding: 6px 12px;
-  border-radius: 0 999px 999px 0;
+  border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
 }
 
 .status-control > .status-more.is-chosen {
@@ -3104,7 +3059,7 @@ a.chip:hover {
   cursor: progress;
 }
 
-/* Compact and inset cards: the same segments as icons, named on hover. */
+/* A book inset in the feed: the same segments as icons, named on hover. */
 .status-icons {
   max-width: 280px;
 }

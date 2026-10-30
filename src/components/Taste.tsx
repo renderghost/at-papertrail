@@ -28,9 +28,9 @@ export function TasteSection({ match, name }: { match: TasteMatch; name: string 
       {match.bothLoved.length > 0 && (
         <>
           <h3 className="club-group-label">You both loved</h3>
-          <CardGrid size="compact" label="You both loved">
+          <CardGrid size="grid" label="You both loved">
             {match.bothLoved.slice(0, 10).map((s) => (
-              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} context={<Both pair={s} name={name} />} />
+              <BookCard key={s.mine.uri} book={cardBook(s.mine)} state={{ entry: s.mine }} context={<Both pair={s} name={name} />} />
             ))}
           </CardGrid>
         </>
@@ -39,9 +39,9 @@ export function TasteSection({ match, name }: { match: TasteMatch; name: string 
       {match.disagreements.length > 0 && (
         <>
           <h3 className="club-group-label">Where you disagree most</h3>
-          <CardGrid size="compact" label="Where you disagree most">
+          <CardGrid size="grid" label="Where you disagree most">
             {match.disagreements.slice(0, 5).map((s) => (
-              <BookCard key={s.mine.uri} size="compact" book={cardBook(s.mine)} state={{ entry: s.mine }} status={false} context={<Both pair={s} name={name} />} />
+              <BookCard key={s.mine.uri} book={cardBook(s.mine)} state={{ entry: s.mine }} status={false} context={<Both pair={s} name={name} />} />
             ))}
           </CardGrid>
         </>
@@ -50,9 +50,9 @@ export function TasteSection({ match, name }: { match: TasteMatch; name: string 
       {match.theirPicks.length > 0 && (
         <>
           <h3 className="club-group-label">Their favourites you haven't read</h3>
-          <CardGrid size="compact" label="Their favourites you haven't read">
+          <CardGrid size="grid" label="Their favourites you haven't read">
             {match.theirPicks.slice(0, 10).map((b) => (
-              <BookCard key={b.uri} size="compact" book={cardBook(b)} context={<Stars stars={b.value.stars} size={12} />} />
+              <BookCard key={b.uri} book={cardBook(b)} context={<Stars stars={b.value.stars} size={12} />} />
             ))}
           </CardGrid>
         </>

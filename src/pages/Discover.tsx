@@ -167,7 +167,7 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
             <input type="checkbox" checked={ownedFirst} onChange={(e) => setOwnedFirst(e.target.checked)} /> Books I own first
           </label>
           {surprised ? (
-            <CardGrid size="large" className="picks" label="Your surprise">
+            <CardGrid size="grid" className="picks" label="Your surprise">
               <PickCard candidate={surprised} why={['picked at random, likelier the better it is rated']} />
             </CardGrid>
           ) : occasion ? (
@@ -177,7 +177,7 @@ function PickNextRead({ library }: { library: BookEntry[] }) {
               <>
                 <p className="small muted occasion-blurb">{occasion.blurb}.</p>
                 {result!.note && <p className="small">{result!.note}</p>}
-                <CardGrid size="large" className="picks" label={`For a ${occasion.label.toLowerCase()}`}>
+                <CardGrid size="grid" className="picks" label={`For a ${occasion.label.toLowerCase()}`}>
                   {result!.picks.map((p) => (
                     <PickCard key={p.candidate.entry.uri} candidate={p.candidate} why={p.why} />
                   ))}
@@ -258,7 +258,7 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
             {recs.length === 0 ? (
               <p className="small muted">{loading ? 'Looking…' : 'Nothing new to suggest yet.'}</p>
             ) : (
-              <CardGrid size="compact" className="picks" label={`Because you loved ${seed.value.title}`}>
+              <CardGrid size="grid" className="picks" label={`Because you loved ${seed.value.title}`}>
                 {recs.map((r) => (
                   <RecommendationCard key={r.hiveId} rec={r} />
                 ))}
@@ -274,7 +274,6 @@ function BecauseYouLoved({ library }: { library: BookEntry[] }) {
 function RecommendationCard({ rec }: { rec: Recommendation }) {
   return (
     <BookCard
-      size="compact"
       book={{ hiveId: rec.hiveId, title: rec.title, authors: rec.authors, identifiers: rec.identifiers, catalog: rec.catalog }}
       context={<p className="why">{rec.why}</p>}
     />
@@ -339,14 +338,13 @@ function Recommendations({ library }: { library: BookEntry[] }) {
 
 function PickGrid({ picks, label }: { picks: NetworkPick[]; label: string }) {
   return (
-    <CardGrid size="compact" className="picks network-picks" label={label}>
+    <CardGrid size="grid" className="picks network-picks" label={label}>
       {picks.map((p) => {
         const v = p.book.value
         const stars = p.readers.reduce((sum, r) => sum + r.stars, 0) / p.readers.length
         return (
           <BookCard
             key={p.book.uri}
-            size="compact"
             book={{ hiveId: v.hiveId, title: v.title, authors: v.authors, identifiers: v.identifiers, entry: p.book }}
             context={
               <p className="why">
