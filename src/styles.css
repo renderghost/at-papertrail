@@ -3068,3 +3068,87 @@ a.chip:hover {
 .card-people li > a:hover {
   text-decoration: underline;
 }
+
+/* ——— Tables, only for editing and batch work (#100) ——— */
+
+.batch-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.batch-bar .select {
+  width: auto;
+  min-height: 34px;
+  padding: 4px 8px;
+}
+
+.batch-count {
+  margin-right: auto;
+  font-size: 0.9rem;
+}
+
+.batch-done {
+  margin-left: 4px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.book-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.book-table th,
+.book-table td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--rule);
+}
+
+.book-table thead th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.book-table tbody th {
+  font-weight: 600;
+}
+
+.book-table tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.book-table tbody th a:hover {
+  text-decoration: underline;
+}
+
+.book-table .pick {
+  width: 40px;
+}
+
+.book-table input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+}
+
+.book-table tr.selected {
+  background: var(--paper-sunk);
+}

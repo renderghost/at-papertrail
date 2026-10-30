@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { STATUS, type BookEntry, type BookStatus } from '../lib/bookhive/types'
 import { Empty } from './bits'
 import { BookTile, type ShelfView } from './BookTile'
+import { SelectShelf } from './SelectShelf'
 
 type Filter = BookStatus | 'all'
 
@@ -40,8 +41,10 @@ function storedView(): ShelfView {
   }
 }
 
-export function Shelves({ entries, emptyMessage }: { entries: BookEntry[]; emptyMessage: string }) {
+/** `editable` (your own Library) adds Select mode: a table for changing many books at once (#100). */
+export function Shelves({ entries, emptyMessage, editable = false }: { entries: BookEntry[]; emptyMessage: string; editable?: boolean }) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [selecting, setSelecting] = useState(false)
   // Covers only, or with title, author and stars: the reader's choice, remembered in this browser (#100).
   const [view, setView] = useState<ShelfView>(storedView)
   const chooseView = (next: ShelfView) => {
@@ -104,7 +107,12 @@ export function Shelves({ entries, emptyMessage }: { entries: BookEntry[]; empty
           )}
         </div>
         <div className="row shelf-view">
-          <div className="chips" role="group" aria-label="Show">
+          {editable && !selecting && (
+            <button type="button" className="btn btn-sm" onClick={() => setSelecting(true)}>
+              Select
+            </button>
+          )}
+          <div className="chips" role="group" aria-label="Show" hidden={selecting}>
             <button className="chip" aria-pressed={view === 'covers'} onClick={() => chooseView('covers')}>
               Covers
             </button>
@@ -122,7 +130,9 @@ export function Shelves({ entries, emptyMessage }: { entries: BookEntry[]; empty
           </label>
         </div>
       </div>
-      {shown.length === 0 ? (
+      {selecting ? (
+        <SelectShelf entries={shown} onDone={() => setSelecting(false)} />
+      ) : shown.length === 0 ? (
         <Empty title="Nothing here yet">
           <p>{emptyMessage}</p>
         </Empty>
