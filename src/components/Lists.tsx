@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { BookIdentifiers } from '../lib/bookhive/types'
 import { describeError } from '../lib/errors'
@@ -9,6 +9,7 @@ import { shelfPath } from '../lib/paths'
 import { useListWrites, useLists } from '../lib/useLists'
 import { useCanWrite } from '../lib/usePeople'
 import { Cover } from './Cover'
+import { Dialog } from './Dialog'
 import { Icon } from './Icon'
 
 /** Shown instead of an editor when the session predates a scope Papertrail now asks for. */
@@ -238,29 +239,20 @@ export function AddToList({ did, book }: { did: string; book: ListBook & { ident
   )
 }
 
-/**
- * Add to a list, from a card's ⋯ menu (#106): the same checklist in a modal
- * dialog. Escape, Done or a click outside closes it; focus goes back to ⋯.
- */
+/** Add to a list, from a card's ⋯ menu (#106): the same checklist in a dialog; Done, Escape or a click outside closes it. */
 export function AddToListDialog({ did, book, onClose }: { did: string; book: ListBook & { identifiers?: BookIdentifiers }; onClose: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  const titleId = useId()
-  useEffect(() => {
-    const el = ref.current
-    if (!el || el.open) return
-    el.setAttribute('closedby', 'any')
-    el.showModal()
-  }, [])
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby={titleId} onClose={onClose}>
-      <h2 id={titleId} className="dialog-title">
-        Add to a list
-      </h2>
-      <p className="muted small dialog-sub">{book.title}</p>
-      <ListChecklist did={did} book={book} />
-      <form method="dialog" className="dialog-actions">
-        <button className="btn btn-primary btn-sm">Done</button>
-      </form>
-    </dialog>
+    <Dialog title="Add to a list" sub={book.title} closedBy="any" onClose={onClose}>
+      {(close) => (
+        <>
+          <ListChecklist did={did} book={book} />
+          <div className="dialog-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={close}>
+              Done
+            </button>
+          </div>
+        </>
+      )}
+    </Dialog>
   )
 }

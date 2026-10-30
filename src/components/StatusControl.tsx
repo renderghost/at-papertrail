@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { useMaybeSession } from '../lib/auth'
 import { withStatus } from '../lib/batch'
 import { applyPatch } from '../lib/bookhive/library'
-import { NOT_INTERESTED, STATUS, STATUS_LABEL, isBookStatus, type BookIdentifiers, type BookStatus, type CatalogBook } from '../lib/bookhive/types'
+import { NOT_INTERESTED, STATUS, STATUS_LABEL, isBookStatus, type BookEntry, type BookIdentifiers, type BookStatus, type CatalogBook } from '../lib/bookhive/types'
 import { describeError } from '../lib/errors'
 import { useBookWrites, useMyCopy } from '../lib/hooks'
 import { newBookRecord } from '../lib/search'
@@ -11,6 +11,7 @@ import { useCanWrite } from '../lib/usePeople'
 import { Icon, type IconName } from './Icon'
 import { AddToListDialog } from './Lists'
 import { usePopoverPlacement } from './popover'
+import { useStatusPrompt } from './StatusPrompts'
 import { useToast } from './Toast'
 
 export type StatusBook = { hiveId: string; title: string; authors: string; identifiers?: BookIdentifiers; catalog: CatalogBook | null }
@@ -29,8 +30,8 @@ type State = BookStatus | 'notInterested' | null
  * BookHive's words. Every segment is neutral until chosen; the chosen one
  * fills and gains a tick. ⋯ holds Abandoned and Not Interested, then owning
  * a copy, lists and removing it. Each change saves at once and says what it
- * did, with Undo. Compact cards show the segments as icons. Nothing at all
- * when signed out.
+ * did, with Undo; Read and Abandoned then ask a little more. Compact cards
+ * show the segments as icons. Nothing at all when signed out.
  */
 export function StatusControl(props: { book: StatusBook; variant?: 'full' | 'icons'; owned?: boolean }) {
   const me = useMaybeSession()
@@ -42,6 +43,7 @@ function Control({ book, variant = 'full', owned: ownNew = false, did }: { book:
   const passed = useNotInterested()
   const writes = useBookWrites()
   const notify = useToast()
+  const ask = useStatusPrompt()
   const lists = useCanWrite('lists')
   const [pending, setPending] = useState<{ state: State } | null>(null)
   const [listsOpen, setListsOpen] = useState(false)
@@ -69,6 +71,12 @@ function Control({ book, variant = 'full', owned: ownNew = false, did }: { book:
     }
   }
 
+  // Read with no review yet: how was it? Abandoned: where did you stop, and why?
+  const promptAfter = (status: BookStatus, entry: BookEntry) => {
+    if (status === STATUS.finished && !entry.value.review?.trim()) ask({ kind: 'review', entry })
+    if (status === STATUS.abandoned) ask({ kind: 'stopped', entry, totalPages: book.catalog?.numPages })
+  }
+
   const choose = (status: BookStatus) => {
     if (state === status) return
     void run(status, async () => {
@@ -76,10 +84,12 @@ function Control({ book, variant = 'full', owned: ownNew = false, did }: { book:
       if (mine) {
         const before = mine
         const after = await writes.update.mutateAsync({ entry: mine, next: withStatus(mine.value, status) })
+        promptAfter(status, after)
         return { text: `Moved to ${label}`, undo: () => writes.update.mutateAsync({ entry: after, next: before.value }) }
       }
       const record = newBookRecord(book, book.catalog, status)
       const created = await writes.create.mutateAsync(ownNew ? { ...record, owned: true } : record)
+      promptAfter(status, created)
       // Choosing a status means you're interested after all.
       const wasPassed = saved === 'notInterested'
       if (wasPassed) await passed.unmark(listBook)

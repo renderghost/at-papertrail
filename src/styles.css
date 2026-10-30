@@ -521,6 +521,13 @@ p {
   color: var(--ink-2);
 }
 
+/* A hint beside a label reads as a sentence, not a shout. */
+.field label .muted {
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .input,
 .textarea,
 .select {
@@ -3259,6 +3266,14 @@ dialog::backdrop {
 
 .dialog-sub {
   margin: 4px 0 16px;
+}
+
+.prompt-form {
+  gap: 14px;
+}
+
+.page-input {
+  width: 88px;
 }
 
 .dialog-actions {
