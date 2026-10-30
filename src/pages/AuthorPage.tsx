@@ -23,7 +23,7 @@ import { displayName, formatDate, plural } from '../lib/format'
 import { useDocumentTitle, useMyLibrary } from '../lib/hooks'
 import { useNetwork } from '../lib/network'
 import { bookPath, profilePath } from '../lib/paths'
-import { useAuthorBooks, useByline } from '../lib/usePeople'
+import { useAuthorBooks, useAuthorSeries, useByline } from '../lib/usePeople'
 
 /** /authors/:name, as on bookhive.buzz: an author's books, your history with them, and their own words if they're on Byline. */
 export function AuthorPage() {
@@ -31,6 +31,7 @@ export function AuthorPage() {
   const name = decodeURIComponent(raw)
   const me = useMaybeSession()
   const books = useAuthorBooks(name)
+  const seriesBooks = useAuthorSeries(name)
   const byline = useByline()
   const library = useMyLibrary()
   const network = useNetwork(me?.did)
@@ -38,7 +39,7 @@ export function AuthorPage() {
 
   const author = FEATURES.byline && byline.data ? findBylineAuthor(byline.data, name) : null
   const works = useMemo(() => mergeEditions(books.data?.books ?? []), [books.data])
-  const grouped = useMemo(() => groupBibliography(works), [works])
+  const grouped = useMemo(() => (seriesBooks.data ? groupBibliography(seriesBooks.data) : null), [seriesBooks.data])
   const mine = useMemo(() => (library.data ?? []).filter((e) => isBy(e.value.authors, name)), [library.data, name])
   const byHive = useMemo(() => new Map(mine.map((e) => [e.value.hiveId, e])), [mine])
   const friends = useMemo(
@@ -91,7 +92,12 @@ export function AuthorPage() {
       {author && <BylineBooks author={author} catalogued={works} />}
 
       {books.isError && <p className="muted small section">BookHive's catalogue couldn't be reached just now.</p>}
-      {grouped.series.map((g) => (
+      {books.data && !grouped && (
+        <div className="section">
+          <Loading>Loading books…</Loading>
+        </div>
+      )}
+      {grouped?.series.map((g) => (
         <section className="section" key={g.series}>
           <div className="section-title">
             <h2>{g.series}</h2>
@@ -100,7 +106,7 @@ export function AuthorPage() {
           <BookGrid books={g.books} byHive={byHive} />
         </section>
       ))}
-      {grouped.standalone.length > 0 && (
+      {grouped && grouped.standalone.length > 0 && (
         <section className="section">
           <div className="section-title">
             <h2>{grouped.series.length ? 'Other books' : 'Books'}</h2>
