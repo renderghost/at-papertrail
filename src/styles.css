@@ -1934,43 +1934,27 @@ p {
   padding: 0;
 }
 
-.list-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
-  padding: 16px 0;
-  border-top: 1px solid var(--rule);
-  align-items: start;
-}
-
-.list-items-ranked .list-item {
-  grid-template-columns: 2.2em auto 1fr;
-}
-
 .list-rank {
   font-family: var(--serif);
-  font-size: 1.6rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--accent);
-  text-align: right;
 }
 
-.list-item-body {
-  min-width: 0;
+.list-table .list-rank {
+  width: 3em;
 }
 
-.list-item-body h3 {
-  font-size: 1.1rem;
+.list-table .item-controls {
+  margin-top: 0;
+  justify-content: flex-end;
+}
+
+.list-note-cell {
+  max-width: 24em;
+  white-space: pre-line;
   overflow-wrap: anywhere;
-}
-
-.list-item-body h3 a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.list-item-body h3 a:hover {
-  text-decoration: underline;
+  color: var(--ink-2);
 }
 
 .list-note {
@@ -2294,20 +2278,12 @@ p {
   padding: 0;
 }
 
-.unmatched,
-.fix-item {
+li.fix-item {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 14px 0;
   border-top: 1px solid var(--rule);
-}
-
-.unmatched-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .unmatched strong,
@@ -2367,14 +2343,6 @@ p {
   overflow-y: auto;
 }
 
-.change-list li {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  padding: 8px 0;
-  border-top: 1px solid var(--rule);
-}
 
 .undo-panel p {
   margin: 0;
@@ -2395,42 +2363,12 @@ p {
   padding-left: 1.2em;
 }
 
-.fix-book {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  min-width: 0;
-}
-
 .fix-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
   margin-top: 4px;
-}
-
-.fix-item fieldset {
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.fix-choice {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 8px;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.fix-choice:has(input:checked) {
-  background: var(--paper-sunk);
-}
-
-.fix-choice input {
-  margin-top: 6px;
 }
 
 .switch-services {
@@ -3067,4 +3005,111 @@ a.chip:hover {
 
 .card-people li > a:hover {
   text-decoration: underline;
+}
+
+/* ——— Tables, only for editing and batch work (#100) ——— */
+
+.batch-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.batch-bar .select {
+  width: auto;
+  min-height: 34px;
+  padding: 4px 8px;
+}
+
+.batch-count {
+  margin-right: auto;
+  font-size: 0.9rem;
+}
+
+.batch-done {
+  margin-left: 4px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.book-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.book-table th,
+.book-table td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--rule);
+}
+
+.book-table thead th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.book-table tbody th {
+  font-weight: 600;
+}
+
+.book-table tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.book-table tbody th a:hover {
+  text-decoration: underline;
+}
+
+.book-table .pick {
+  width: 40px;
+}
+
+.book-table input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+}
+
+.book-table tr.selected {
+  background: var(--paper-sunk);
+}
+
+.fix-table caption {
+  text-align: left;
+  padding-bottom: 6px;
+}
+
+.fix-table .fix-facts {
+  margin: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.fix-picker td {
+  background: var(--paper-raised);
+}
+
+.unmatched-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }

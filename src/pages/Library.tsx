@@ -105,7 +105,7 @@ export function Library() {
             <div className="section-title">
               <h2>Shelves</h2>
             </div>
-            <Shelves entries={entries} emptyMessage="No books with this status." />
+            <Shelves entries={entries} emptyMessage="No books with this status." editable />
           </section>
         </>
       )}
